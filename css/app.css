@@ -327,3 +327,38 @@ input, select, textarea { border-radius: 14px; transition: border-color .15s, bo
 
 .sug-forte { border: 1px solid color-mix(in srgb, var(--info) 50%, transparent); }
 .sug-forte .btns { margin-top: 10px; }
+
+/* ---------- aba Horários: semana ---------- */
+.ag-topo { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; }
+.sem-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.sem-nav .btn { min-height: 44px; padding: 0 14px; }
+.semana { display: grid; gap: 12px; margin-top: 4px; }
+.sem-dia { background: var(--card); border: 1px solid var(--linha); border-radius: 16px; padding: 12px 14px; }
+.sem-dia.hoje { border-color: color-mix(in srgb, var(--marca) 55%, transparent); }
+.sem-cab { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.sem-cab b { font-size: 16px; text-transform: capitalize; }
+.sem-cab span { color: var(--texto-2); font-size: 13px; flex: 1; }
+.sem-cab .link { padding: 0; min-height: 32px; font-size: 13px; }
+.sem-it { display: flex; gap: 10px; padding: 9px 0 9px 10px; border-top: 1px solid var(--linha); border-left: 4px solid var(--ok); margin-left: -2px; }
+.sem-it:first-of-type { border-top: 0; }
+.sem-it.pendente { border-left-color: var(--alerta); background: color-mix(in srgb, var(--alerta) 7%, transparent); }
+.sem-it.bloqueado { border-left-color: var(--texto-2); opacity: .8; }
+.sem-h { min-width: 46px; font-weight: 800; font-size: 14px; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+.sem-h small { font-weight: 500; color: var(--texto-2); font-size: 12px; }
+.sem-d { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; }
+.sem-d small { color: var(--texto-2); font-size: 13px; }
+.sem-d em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--alerta); margin-top: 2px; }
+.sem-livre { color: var(--texto-2); font-size: 14px; padding: 6px 0; }
+.rapidas { margin-top: 8px; }
+.rapidas .btn { min-height: 40px; font-size: 14px; padding: 0 10px; flex: 1 1 90px; }
+@media (min-width: 900px) {
+  .semana { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+  .sem-dia { padding: 10px; min-height: 220px; }
+  .sem-cab { flex-wrap: wrap; }
+  .sem-it { flex-direction: column; gap: 2px; padding-left: 8px; }
+  .sem-h { flex-direction: row; gap: 4px; min-width: 0; }
+  .sem-h small::before { content: "–"; }
+  .rapidas .btn { flex: 1 1 100%; }
+  #ag-lista .resumo { max-width: 560px; }
+}
+@media (min-width: 900px) { #ag-lista > .semana, #ag-lista > .resumo { grid-column: 1 / -1; } }

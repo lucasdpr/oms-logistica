@@ -111,8 +111,8 @@ function moldura(titulo, sub, corpo) {
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${corpo}</main>
   <nav class="nav"><div class="nav-in">
-    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Agenda', 'agenda') + item('historico', 'Histórico', 'historico') + item('pedir', 'Pedir', 'pedir') + item('config', 'Ajustes', 'config', c || '')
-        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Agenda', 'agenda') + item('meus', 'Meus pedidos', 'meus') + item('historico', 'Histórico', 'historico')}
+    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('pedir', 'Pedir', 'pedir') + item('config', 'Ajustes', 'config', c || '')
+        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus') + item('historico', 'Histórico', 'historico')}
   </div></nav>`;
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
 }
@@ -364,23 +364,60 @@ window.addEventListener('online', () => { if (S.sessao) enviarFila(); });
 
 // ------------------------------------------------------------------ agenda
 async function telaAgenda() {
-  S.dados.dia = S.dados.dia || hoje();
-  const dia = S.dados.dia;
-  moldura('Agenda', 'Reservas aprovadas e pedidos aguardando', `
-    <div class="chips">${proximosDias(14).map(d => `<button class="chip dia-chip ${d.iso === dia ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
-    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Aguardando a logística</span><span><i class="b"></i>Bloqueado</span></div>
+  const A = S.dados.ag || (S.dados.ag = { modo: 'semana', filtro: 'todos', dia: hoje(), semana: 0 });
+  const adm = S.eu.admin;
+  const filtros = [['todos', 'Todos'], ['pendente', 'Para aprovar'], ['aprovado', 'Aprovados']];
+  const ini = A.modo === 'semana' ? (() => { const d = new Date(); d.setDate(d.getDate() + 7 * A.semana); return isoDia(d); })() : A.dia;
+  moldura('Horários', A.modo === 'semana' ? 'Os próximos 7 dias, aprovados e para aprovar' : 'Um dia, equipamento por equipamento', `
+    <div class="ag-topo">
+      <div class="chips"><button class="chip ${A.modo === 'semana' ? 'on' : ''}" data-modo="semana">Semana</button><button class="chip ${A.modo === 'dia' ? 'on' : ''}" data-modo="dia">Dia</button></div>
+      <div class="chips">${filtros.map(([v, t]) => `<button class="chip ${A.filtro === v ? 'on' : ''}" data-filtro="${v}">${t}</button>`).join('')}</div>
+    </div>
+    ${A.modo === 'semana' ? `<div class="sem-nav"><button class="btn" data-sem="-1" ${A.semana <= 0 ? 'disabled' : ''}>‹ Anterior</button><b>${dataBR(ini)} a ${dataBR(isoDia(new Date(new Date(ini + 'T12:00').getTime() + 6 * 864e5)))}</b><button class="btn" data-sem="1">Próxima ›</button></div>`
+      : `<div class="chips">${proximosDias(14).map(d => `<button class="chip dia-chip ${d.iso === A.dia ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>`}
+    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Para aprovar</span><span><i class="b"></i>Bloqueado</span></div>
     <div id="ag-lista"><div class="card"><p class="sub">Carregando…</p></div></div>`);
-  document.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { S.dados.dia = b.dataset.dia; telaAgenda(); });
+  document.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => { A.modo = b.dataset.modo; telaAgenda(); });
+  document.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => { A.filtro = b.dataset.filtro; telaAgenda(); });
+  document.querySelectorAll('[data-sem]').forEach(b => b.onclick = () => { A.semana = Math.max(0, A.semana + Number(b.dataset.sem)); telaAgenda(); });
+  document.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { A.dia = b.dataset.dia; telaAgenda(); });
+  const dias = A.modo === 'semana' ? 7 : 1;
   try {
-    const [lista, bls] = await Promise.all([api(`/api/logistica/agenda?inicio=${dia}&dias=1`), api(`/api/logistica/bloqueios?inicio=${dia}&dias=1`)]);
-    $('#ag-lista').innerHTML = S.equipamentos.map(e => {
-      const meus = lista.filter(p => p.equipamento_id === e.id), bl = bls.filter(b => b.equipamento_id === e.id);
-      return `<div class="card eq"><div class="eq-cab"><b>${esc(e.nome)}</b><span>${meus.length ? `${meus.length} reserva(s)` : 'livre'}</span></div>
-        ${trilho(meus, dia, null, bl)}${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > dia ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}${meus.map(linhaReserva).join('')}
-        <button class="btn largo" data-pedir="${e.id}" style="margin-top:12px">Pedir ${esc(e.nome)} neste dia</button></div>`;
-    }).join('');
-    document.querySelectorAll('[data-pedir]').forEach(b => b.onclick = () => { Object.assign(S.form, { equipamento_id: Number(b.dataset.pedir), data: dia, quantidade: 1 }); ir('pedir'); });
+    const [todos, bls] = await Promise.all([api(`/api/logistica/agenda?inicio=${ini}&dias=${dias}`), api(`/api/logistica/bloqueios?inicio=${ini}&dias=${dias}`)]);
+    const lista = todos.filter(p => A.filtro === 'todos' || p.status === A.filtro);
+    S.dados.pedidos = lista;
+    if (A.modo === 'dia') {
+      const dia = A.dia;
+      $('#ag-lista').innerHTML = S.equipamentos.map(e => {
+        const meus = lista.filter(p => p.equipamento_id === e.id), bl = bls.filter(b => b.equipamento_id === e.id);
+        return `<div class="card eq"><div class="eq-cab"><b>${esc(e.nome)}</b><span>${meus.length ? `${meus.length} pedido(s)` : 'livre'}</span></div>
+          ${trilho(meus, dia, null, bl)}${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > dia ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}
+          ${meus.map(p => linhaReserva(p) + (adm && p.status === 'pendente' ? acoesRapidas(p) : '')).join('')}
+          <button class="btn largo" data-pedir="${e.id}" data-diap="${dia}" style="margin-top:12px">Pedir ${esc(e.nome)} neste dia</button></div>`;
+      }).join('');
+    } else {
+      const dd = Array.from({ length: 7 }, (_, k) => isoDia(new Date(new Date(ini + 'T12:00').getTime() + k * 864e5)));
+      const pend = lista.filter(p => p.status === 'pendente').length, apr = lista.filter(p => p.status === 'aprovado').length;
+      $('#ag-lista').innerHTML = `<div class="resumo"><div class="res"><b>${lista.length}</b><span>na semana</span></div><div class="res ${pend ? 'alerta' : ''}"><b>${pend}</b><span>para aprovar</span></div><div class="res"><b>${apr}</b><span>aprovados</span></div></div>
+        <div class="semana">${dd.map(d => {
+          const ps = lista.filter(p => p.inicio.slice(0, 10) <= d && p.fim.slice(0, 10) >= d).sort((a, b) => a.inicio.localeCompare(b.inicio));
+          const bs = bls.filter(b => b.inicio.slice(0, 10) <= d && b.fim.slice(0, 10) >= d);
+          const dt = new Date(d + 'T12:00'), rot = d === hoje() ? 'Hoje' : d === amanha() ? 'Amanhã' : SEMANA[dt.getDay()];
+          return `<div class="sem-dia ${d === hoje() ? 'hoje' : ''}"><div class="sem-cab"><b>${rot}</b><span>${dataBR(d)}</span><button class="link" data-verdia="${d}">ver dia</button></div>
+            ${bs.map(b => `<div class="sem-it bloqueado"><span class="sem-h">⛔</span><span class="sem-d"><b>${esc(b.equipamento)}</b><small>Bloqueado${b.motivo ? ' · ' + esc(b.motivo) : ''}</small></span></div>`).join('')}
+            ${ps.length ? ps.map(p => `<div class="sem-it ${p.status}"><span class="sem-h">${p.inicio.slice(0, 10) < d ? '00:00' : p.inicio.slice(11, 16)}<small>${p.fim.slice(0, 10) > d ? '24:00' : p.fim.slice(11, 16)}</small></span>
+              <span class="sem-d"><b>${esc(p.equipamento)}${p.quantidade > 1 ? ' ×' + p.quantidade : ''}${p.urgente ? ' 🚨' : ''}</b><small>${esc(p.meu ? 'Você' : nomeBonito(p.solicitante_nome))}${p.setor ? ' · ' + esc(p.setor) : ''}</small><small>${esc(p.origem)} → ${esc(p.destino)}</small>
+              ${p.status === 'pendente' ? `<em>para aprovar</em>` : ''}${adm && p.status === 'pendente' ? acoesRapidas(p) : ''}</span></div>`).join('')
+              : `<p class="sem-livre">${A.filtro === 'pendente' ? 'Nada para aprovar' : 'Livre'}</p>`}</div>`;
+        }).join('')}</div>`;
+      document.querySelectorAll('[data-verdia]').forEach(b => b.onclick = () => { A.modo = 'dia'; A.dia = b.dataset.verdia; telaAgenda(); });
+    }
+    document.querySelectorAll('[data-pedir]').forEach(b => b.onclick = () => { Object.assign(S.form, { equipamento_id: Number(b.dataset.pedir), data: b.dataset.diap, quantidade: 1 }); ir('pedir'); });
+    ligarAcoes(telaAgenda);
   } catch (e) { $('#ag-lista').innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
+}
+function acoesRapidas(p) {
+  return `<div class="btns rapidas"><button class="btn ok" data-ap="${p.id}">Aprovar</button><button class="btn" data-rm="${p.id}">Mudar horário</button><button class="btn perigo" data-rc="${p.id}" aria-label="Recusar">Recusar</button></div>`;
 }
 
 // ------------------------------------------------------------------ meus pedidos
