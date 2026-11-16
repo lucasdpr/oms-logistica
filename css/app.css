@@ -324,3 +324,6 @@ input, select, textarea { border-radius: 14px; transition: border-color .15s, bo
 .tv-d small { color: var(--texto-2); font-size: 16px; }
 .tv-livre { font-size: 20px; color: var(--ok); padding: 8px 0; }
 @media (max-width: 899px) { .tv-grid { grid-template-columns: 1fr; } .tv { padding: 16px; } }
+
+.sug-forte { border: 1px solid color-mix(in srgb, var(--info) 50%, transparent); }
+.sug-forte .btns { margin-top: 10px; }

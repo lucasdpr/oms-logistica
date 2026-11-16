@@ -385,7 +385,7 @@ async function telaAgenda() {
 
 // ------------------------------------------------------------------ meus pedidos
 function cartaoPedido(p, admin) {
-  const rot = p.fase === 'entregue' ? 'Entregue' : p.fase === 'a_caminho' ? 'A caminho' : ({ pendente: 'Aguardando', aprovado: 'Aprovado', recusado: 'Recusado', cancelado: 'Cancelado', sugerido: 'Aguardando' }[p.status] || p.status);
+  const rot = p.fase === 'entregue' ? 'Entregue' : p.fase === 'a_caminho' ? 'A caminho' : ({ pendente: 'Aguardando', aprovado: 'Aprovado', recusado: 'Recusado', cancelado: 'Cancelado', sugerido: admin ? 'Esperando resposta' : 'Responda' }[p.status] || p.status);
   const seloCls = p.fase === 'entregue' ? 'entregue' : p.fase === 'a_caminho' ? 'caminho' : p.status;
   const ativo = ['pendente', 'aprovado'].includes(p.status) && p.fim >= `${hoje()} 00:00`;
   return `<div class="card ped st-${p.status} ${p.urgente && p.status === 'pendente' ? 'urg' : ''}">
@@ -398,11 +398,17 @@ function cartaoPedido(p, admin) {
     ${admin && p.solicitante_telefone ? `<p class="ped-rota">📞 <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a> · matrícula ${esc(p.solicitante)}</p>` : admin ? `<p class="ped-rota">matrícula ${esc(p.solicitante)}</p>` : ''}
     ${p.observacao ? `<p class="mini">“${esc(p.observacao)}”</p>` : ''}
     ${p.reagendado && p.status === 'aprovado' ? `<div class="aviso sug">A logística remarcou: você pediu ${dataBR(p.sugestao_inicio)}.${p.motivo ? ' ' + esc(p.motivo) : ''}</div>` : ''}
+    ${p.status === 'sugerido' && !admin ? `<div class="aviso sug sug-forte"><b>A logística sugeriu outro horário:</b><br>${quando({ inicio: p.sugestao_inicio, fim: p.sugestao_fim })}${p.motivo ? `<br><span class="sub">${esc(p.motivo)}</span>` : ''}
+      <div class="btns"><button class="btn ok" data-aceita="${p.id}">Aceito</button><button class="btn perigo" data-naopode="${p.id}">Não posso</button></div></div>` : ''}
+    ${p.status === 'sugerido' && admin ? `<div class="aviso sug">Você sugeriu ${quando({ inicio: p.sugestao_inicio, fim: p.sugestao_fim })}. Esperando ${esc(primeiroNome(p.solicitante_nome))} responder.</div>` : ''}
+    ${p.status === 'pendente' && admin && p.motivo ? `<div class="aviso conf">${esc(p.motivo)}</div>` : ''}
     ${p.status === 'recusado' && p.motivo ? `<div class="aviso conf">Motivo: ${esc(p.motivo)}</div>` : ''}
     ${admin && p.conflitos?.length ? `<div class="aviso conf">Choca com: ${p.conflitos.map(c => `${esc(nomeBonito(c.nome) || '')} ${c.inicio.slice(11)}–${c.fim.slice(11)} (${c.status === 'aprovado' ? 'aprovado' : 'aguardando'})`).join('; ')}</div>` : ''}
-    ${admin && ['pendente', 'sugerido'].includes(p.status) ? `<div class="btns"><button class="btn ok" data-ap="${p.id}">Aprovar</button><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-rc="${p.id}">Recusar</button></div>` : ''}
+    ${admin && p.status === 'pendente' ? `<div class="btns"><button class="btn ok" data-ap="${p.id}">Aprovar</button><button class="btn" data-rm="${p.id}">Mudar horário</button></div>
+      <div class="btns"><button class="btn" data-ed="${p.id}">Editar</button><button class="btn perigo" data-rc="${p.id}">Recusar</button></div>` : ''}
+    ${admin && p.status === 'sugerido' ? `<div class="btns"><button class="btn" data-rm="${p.id}">Mudar horário</button><button class="btn" data-ed="${p.id}">Editar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}
     ${admin && p.status === 'aprovado' && !p.entregue_em ? `<div class="btns">${!p.saiu_em ? `<button class="btn pri" data-saiu="${p.id}">Saiu</button>` : ''}<button class="btn ok" data-ent="${p.id}">Entregue</button></div>
-      ${!p.saiu_em ? `<div class="btns"><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}` : ''}
+      ${!p.saiu_em ? `<div class="btns"><button class="btn" data-rm="${p.id}">Mudar horário</button><button class="btn" data-ed="${p.id}">Editar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}` : ''}
     ${!admin && ativo && !p.saiu_em ? `<div class="btns"><button class="btn perigo" data-cn="${p.id}">Cancelar pedido</button></div>` : ''}
     ${p.decidido_por_nome && p.status !== 'pendente' ? `<p class="mini">${p.status === 'cancelado' ? 'Cancelado' : 'Decidido'} por ${esc(primeiroNome(p.decidido_por_nome))} em ${dataBR(p.decidido_em)}</p>` : `<p class="mini">Pedido em ${dataBR(p.criado_em)}</p>`}
   </div>`;
@@ -425,18 +431,47 @@ function ligarAcoes(recarregar) {
     b.onclick = () => {
       const p = (S.dados.pedidos || []).find(x => String(x.id) === b.dataset.rm) || {};
       const d = (p.inicio || '').slice(0, 10) || amanha();
-      folha(`<h2>Remarcar</h2><p class="sub">O pedido fica aprovado no novo dia e horário, e quem pediu é avisado.</p>
+      folha(`<h2>Mudar horário</h2><p class="sub">Escolha o novo dia e horário. Você pode só sugerir (a pessoa confirma) ou já mudar e aprovar.</p>
         <label class="campo"><span>Dia</span><input type="date" id="rm-d" value="${d}"></label>
         <div class="dupla"><label class="campo"><span>Início</span><input type="time" id="rm-i" value="${(p.inicio || '').slice(11, 16) || '07:30'}"></label><label class="campo"><span>Fim</span><input type="time" id="rm-f" value="${(p.fim || '').slice(11, 16) || '09:30'}"></label></div>
-        <label class="campo"><span>Recado (opcional)</span><input id="rm-m" placeholder="Ex.: CBSI só tem carreta à tarde"></label>
-        <div class="btns"><button class="btn" data-x>Voltar</button><button class="btn pri" data-ok>Remarcar e aprovar</button></div>`, (f, fechar) => {
+        <label class="campo"><span>Recado para a pessoa (opcional)</span><input id="rm-m" placeholder="Ex.: CBSI só tem carreta à tarde"></label>
+        <button class="btn pri largo" data-sug>Enviar para ${esc(primeiroNome(p.solicitante_nome) || 'a pessoa')} confirmar</button>
+        <p class="mini" style="text-align:center">Ela recebe um aviso e responde "Aceito" ou "Não posso".</p>
+        <button class="btn largo" data-ok style="margin-top:8px">Mudar e já aprovar</button>
+        <p class="mini" style="text-align:center">Fica aprovado no novo horário e ela só é avisada.</p>
+        <button class="btn largo" data-x style="margin-top:8px">Voltar</button>`, (f, fechar) => {
         f.querySelector('[data-x]').onclick = fechar;
-        f.querySelector('[data-ok]').onclick = () => {
-          const dia = f.querySelector('#rm-d').value, i = f.querySelector('#rm-i').value, fi = f.querySelector('#rm-f').value;
-          fechar(); acao(b.dataset.rm, { acao: 'remarcar', inicio: `${dia} ${i}`, fim: `${fi <= i ? diaSeguinte(dia) : dia} ${fi}`, motivo: f.querySelector('#rm-m').value }, 'Remarcado e aprovado. Quem pediu foi avisado.');
-        };
+        const corpo = tipo => { const dia = f.querySelector('#rm-d').value, i = f.querySelector('#rm-i').value, fi = f.querySelector('#rm-f').value;
+          return { acao: tipo, inicio: `${dia} ${i}`, fim: `${fi <= i ? diaSeguinte(dia) : dia} ${fi}`, motivo: f.querySelector('#rm-m').value }; };
+        f.querySelector('[data-ok]').onclick = () => { const c = corpo('remarcar'); fechar(); acao(b.dataset.rm, c, 'Horário mudado e aprovado. Quem pediu foi avisado.'); };
+        f.querySelector('[data-sug]').onclick = () => { const c = corpo('sugerir'); fechar(); acao(b.dataset.rm, c, 'Sugestão enviada. Você é avisado quando a pessoa responder.'); };
       });
     };
+  });
+  const responder = async (id, body, msg) => { try { await api(`/api/logistica/pedidos/${id}/responder`, { method: 'POST', body }); toast(msg); recarregar(); } catch (e) { toast(e.message); } };
+  document.querySelectorAll('[data-aceita]').forEach(b => b.onclick = () => responder(b.dataset.aceita, { aceitar: true }, 'Combinado! Seu pedido está aprovado no novo horário.'));
+  document.querySelectorAll('[data-naopode]').forEach(b => b.onclick = () => folha(`<h2>Não pode nesse horário?</h2><p class="sub">Conte para a logística o melhor horário para você.</p>
+      <label class="campo"><span>Mensagem</span><textarea id="np-m" placeholder="Ex.: Só consigo depois das 13h"></textarea></label><div class="btns"><button class="btn" data-x>Voltar</button><button class="btn pri" data-ok>Enviar</button></div>`,
+    (f, fechar) => { f.querySelector('[data-x]').onclick = fechar; f.querySelector('[data-ok]').onclick = () => { const m = f.querySelector('#np-m').value.trim(); fechar(); responder(b.dataset.naopode, { aceitar: false, motivo: m }, 'Enviado. A logística vai ver outro horário.'); }; }));
+  document.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => {
+    const p = (S.dados.pedidos || []).find(x => String(x.id) === b.dataset.ed) || {};
+    const eq = S.equipamentos.find(e => e.id === p.equipamento_id) || {};
+    folha(`<h2>Editar pedido</h2><p class="sub">${esc(nomeBonito(p.solicitante_nome))} é avisado do que mudar.</p>
+      <label class="campo"><span>Setor</span><select id="ed-s">${S.eu.setores.map(x => `<option ${x === p.setor ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <div class="dupla"><label class="campo"><span>Origem</span><input id="ed-o" value="${esc(p.origem)}"></label><label class="campo"><span>Destino</span><input id="ed-d" value="${esc(p.destino)}"></label></div>
+      <label class="campo"><span>O que vai transportar</span><input id="ed-c" value="${esc(p.carga)}"></label>
+      ${eq.max_qtd > 1 ? `<label class="campo"><span>Quantidade</span><input id="ed-q" type="number" min="1" max="${eq.max_qtd}" value="${p.quantidade || 1}"></label>` : ''}
+      <label class="campo"><span>Observação</span><textarea id="ed-ob">${esc(p.observacao || '')}</textarea></label>
+      <div class="btns"><button class="btn" data-x>Voltar</button><button class="btn pri" data-ok>Salvar e avisar</button></div>`, (f, fechar) => {
+      f.querySelector('[data-x]').onclick = fechar;
+      f.querySelector('[data-ok]').onclick = async () => {
+        const v = id => f.querySelector(id)?.value;
+        try {
+          const r = await api(`/api/logistica/pedidos/${p.id}/editar`, { method: 'POST', body: { setor: v('#ed-s'), origem: v('#ed-o'), destino: v('#ed-d'), carga: v('#ed-c'), observacao: v('#ed-ob'), quantidade: v('#ed-q') ? Number(v('#ed-q')) : null } });
+          fechar(); toast(r.mudou.length ? 'Salvo. Quem pediu foi avisado.' : 'Nada mudou.'); recarregar();
+        } catch (e) { toast(e.message); }
+      };
+    });
   });
   document.querySelectorAll('[data-cn]').forEach(b => b.onclick = async () => {
     if (!await confirmar('Cancelar este pedido?', 'O horário fica livre para outra pessoa.', 'Cancelar pedido')) return;
@@ -464,6 +499,7 @@ async function telaPainel() {
   moldura('Pedidos', 'Aprove, remarque ou recuse', `
     <div id="pn-resumo"></div>
     <div class="chips"><button class="chip ${aba === 'pendente' ? 'on' : ''}" data-aba="pendente">Para decidir${S.eu.pedidos_pendentes ? ` <small>(${S.eu.pedidos_pendentes})</small>` : ''}</button>
+    <button class="chip ${aba === 'sugerido' ? 'on' : ''}" data-aba="sugerido">Esperando resposta</button>
     <button class="chip ${aba === 'proximos' ? 'on' : ''}" data-aba="proximos">Já aprovados</button>
     <button class="chip ${aba === 'recusado' ? 'on' : ''}" data-aba="recusado">Recusados</button></div>
     <div id="pn-lista"><div class="card"><p class="sub">Carregando…</p></div></div>`);
