@@ -1,4 +1,4 @@
-// OMS Logística — agendamento de caminhãozinho, carreta CBSI e outros equipamentos da GGMA.
+// OMS Logística — agendamento de caminhãozinho, carreta CBSI e outros equipamentos da GMLC.
 // Mesmo servidor e mesmo login do OMS. Quem não tem conta pede cadastro e a logística aprova.
 
 const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -172,7 +172,7 @@ function pedirNovaSenha(mat, atual, nome) {
 }
 
 function telaCadastro() {
-  const setores = ['OMS', 'OMR', 'GGMA', 'Máquina', 'Outro'];
+  const setores = ['OMS', 'OMR', 'GMLC', 'Máquina', 'Outro'];
   $('#app').innerHTML = `<div class="login">
     <button class="link" id="c-voltar" style="align-self:flex-start">← Voltar</button>
     <h1>Pedir cadastro</h1>

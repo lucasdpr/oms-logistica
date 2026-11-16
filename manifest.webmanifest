@@ -1,7 +1,7 @@
 {
   "name": "OMS Logística",
   "short_name": "Logística",
-  "description": "Agendamento de carreta, munck e equipamentos da logística da GGMA.",
+  "description": "Agendamento de caminhãozinho, carreta e equipamentos da logística da GMLC.",
   "lang": "pt-BR",
   "start_url": "./?origem=pwa",
   "scope": "./",
