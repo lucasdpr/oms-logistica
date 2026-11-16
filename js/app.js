@@ -49,6 +49,7 @@ const ICO = {
   meus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
   painel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 17h2m4 0h8m4 0h4V12l-3-5h-5v10"/><path d="M3 17V7h12"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg>',
   config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  carreta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V6h13v10"/><path d="M15 9h4l3 4v3h-2"/><path d="M2 16h1m4 0h4m4 0h1"/><circle cx="5" cy="17" r="2"/><circle cx="13" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg>',
   sair: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 
@@ -132,7 +133,7 @@ function confirmar(titulo, texto, ok = 'Confirmar') {
 function telaLogin() {
   $('#app').innerHTML = `<div class="login">
     <img class="login-logo" src="icons/icon-192.png" alt="">
-    <h1>OMS Logística</h1>
+    <h1>OMS <em>Logística</em></h1>
     <p class="sub">Peça o caminhãozinho ou a carreta e acompanhe a resposta da logística.</p>
     <form id="f-login">
       <label class="campo"><span>Matrícula</span><input id="l-mat" autocomplete="username" autocapitalize="characters" required></label>
@@ -210,7 +211,7 @@ async function telaPedir() {
   moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
     ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
     <p class="sec">O que você precisa</p>
-    <div class="chips" id="p-eq">${S.equipamentos.map(e => `<button class="chip ${e.id === F.equipamento_id ? 'on' : ''}" data-eq="${e.id}">${esc(e.nome)}</button>`).join('')}</div>
+    <div class="chips" id="p-eq">${S.equipamentos.map(e => `<button class="chip chip-eq ${e.id === F.equipamento_id ? 'on' : ''}" data-eq="${e.id}">${e.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(e.nome)}<small>${e.exclusivo ? 'um uso por vez' : `até ${e.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
     <div id="p-qtd"></div>
     <p class="sec">Quando</p>
     <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
@@ -345,7 +346,7 @@ async function telaAgenda() {
 function cartaoPedido(p, admin) {
   const rot = { pendente: 'Aguardando', aprovado: 'Aprovado', recusado: 'Recusado', cancelado: 'Cancelado', sugerido: 'Aguardando' }[p.status] || p.status;
   const ativo = ['pendente', 'aprovado'].includes(p.status) && p.fim >= `${hoje()} 00:00`;
-  return `<div class="card ped">
+  return `<div class="card ped st-${p.status} ${p.urgente && p.status === 'pendente' ? 'urg' : ''}">
     <div class="ped-top"><h3>${p.urgente ? '🚨 ' : ''}${esc(p.equipamento)}${p.quantidade > 1 ? ` <span class="sub">× ${p.quantidade}</span>` : ''}</h3><span class="selo ${p.status}">${rot}</span></div>
     <p class="ped-quando">${quando(p)}</p>
     <p class="ped-rota"><b>${esc(p.origem)}</b> → <b>${esc(p.destino)}</b> · ${esc(p.carga)}</p>
