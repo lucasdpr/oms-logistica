@@ -52,6 +52,7 @@ const ICO = {
   config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   carreta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V6h13v10"/><path d="M15 9h4l3 4v3h-2"/><path d="M2 16h1m4 0h4m4 0h1"/><circle cx="5" cy="17" r="2"/><circle cx="13" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg>',
   historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg>',
+  inicio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
   sair: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 
@@ -82,23 +83,23 @@ async function renovar() {
 }
 
 // ------------------------------------------------------------------ navegação
-const TELAS_LOGADO = ['pedir', 'agenda', 'meus', 'painel', 'cadastros', 'config', 'historico', 'tv'];
+const TELAS_LOGADO = ['inicio', 'pedir', 'agenda', 'meus', 'painel', 'cadastros', 'config', 'historico', 'tv'];
 function ir(tela) { if (location.hash !== '#' + tela) location.hash = tela; else desenhar(); }
 window.addEventListener('hashchange', () => desenhar());
 
 async function desenhar() {
-  let tela = (location.hash || '').slice(1) || (S.sessao ? (S.eu?.admin ? 'painel' : 'pedir') : 'login');
+  let tela = (location.hash || '').slice(1) || (S.sessao ? (S.eu?.admin ? 'inicio' : 'pedir') : 'login');
   if (!S.sessao && !['login', 'cadastro'].includes(tela)) tela = 'login';
-  if (S.sessao && ['login', 'cadastro'].includes(tela)) tela = S.eu?.admin ? 'painel' : 'pedir';
+  if (S.sessao && ['login', 'cadastro'].includes(tela)) tela = S.eu?.admin ? 'inicio' : 'pedir';
   if (S.sessao && !S.eu) {
     $('#app').innerHTML = '<div class="carregando"><div class="spin"></div></div>';
     try { await carregarEu(); } catch (e) { if (!S.sessao) return; $('#app').innerHTML = `<div class="login"><p class="tit">Não deu para carregar</p><p class="sub">${esc(e.message)}</p><button class="btn pri largo" onclick="location.reload()">Tentar de novo</button></div>`; return; }
     ativarPush();
   }
-  if (S.sessao && !TELAS_LOGADO.includes(tela)) tela = S.eu?.admin ? 'painel' : 'pedir';
-  if (['painel', 'cadastros', 'config', 'tv'].includes(tela) && !S.eu?.admin) tela = 'pedir';
+  if (S.sessao && !TELAS_LOGADO.includes(tela)) tela = S.eu?.admin ? 'inicio' : 'pedir';
+  if (['inicio', 'painel', 'cadastros', 'config', 'tv'].includes(tela) && !S.eu?.admin) tela = 'pedir';
   S.tela = tela;
-  const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig, historico: telaHistorico, tv: telaTV }[tela];
+  const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig, historico: telaHistorico, tv: telaTV, inicio: telaInicio }[tela];
   await R();
 }
 
@@ -111,7 +112,7 @@ function moldura(titulo, sub, corpo) {
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${corpo}</main>
   <nav class="nav"><div class="nav-in">
-    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('pedir', 'Pedir', 'pedir') + item('config', 'Ajustes', 'config', c || '')
+    ${a ? item('inicio', 'Início', 'inicio') + item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('config', 'Ajustes', 'config', c || '')
         : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus') + item('historico', 'Histórico', 'historico')}
   </div></nav>`;
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
@@ -563,11 +564,20 @@ async function telaPainel() {
 async function telaConfig() {
   moldura('Ajustes', 'Cadastros, equipamentos e quem gerencia', '<div id="cf"><div class="card"><p class="sub">Carregando…</p></div></div>');
   try {
-    const [cads, eqs, adms, bls] = await Promise.all([api('/api/logistica/cadastros'), api('/api/logistica/equipamentos?todos=true'), api('/api/logistica/admins'), api(`/api/logistica/bloqueios?inicio=${hoje()}&dias=60`)]);
+    const [cads, eqs, adms, bls, pes] = await Promise.all([api('/api/logistica/cadastros'), api('/api/logistica/equipamentos?todos=true'), api('/api/logistica/admins'), api(`/api/logistica/bloqueios?inicio=${hoje()}&dias=60`), api('/api/logistica/pessoas')]);
     $('#cf').innerHTML = `
       <p class="sec">Pedidos de cadastro</p>
       <div class="card">${cads.length ? cads.map(c => `<div class="lista-linha"><div><b>${esc(c.nome)}</b><small>${esc(c.matricula)} · ${esc(c.setor || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}</small></div>
         <button class="btn ok" data-cok="${c.id}">Liberar</button><button class="btn perigo" data-cno="${c.id}" aria-label="Recusar">✕</button></div>`).join('') : '<p class="sub">Nenhum pedido de cadastro.</p>'}</div>
+      <p class="sec">Pessoas de fora (só este app)</p>
+      <div class="card">
+        <p class="mini" style="margin-top:0">Quem não tem conta no OMS. Elas só entram neste app, nunca no OMS.</p>
+        <input id="pes-busca" placeholder="Buscar por nome ou matrícula" style="margin-top:8px">
+        <div id="pes-lista">${pes.length ? pes.map(p => `<div class="lista-linha pes ${p.ativo ? '' : 'inativo'}" data-busca="${esc((p.nome + ' ' + p.matricula + ' ' + (p.setor || '')).toLowerCase())}"><div><b>${esc(nomeBonito(p.nome))}</b>
+          <small>${esc(p.matricula)}${p.setor ? ' · ' + esc(p.setor) : ''}${p.telefone ? ' · ' + esc(p.telefone) : ''}</small>
+          <small>${!p.ativo ? '⛔ Desativado' : p.primeiro_acesso ? 'Ainda não entrou (senha = matrícula)' : p.ultimo_acesso ? 'Último acesso ' + dataBR(p.ultimo_acesso) : 'Já criou a senha'} · ${p.pedidos} pedido(s)</small></div>
+          <button class="btn" data-pesmenu="${esc(p.matricula)}" aria-label="Opções">⋯</button></div>`).join('') : '<p class="sub" style="margin-top:10px">Ninguém de fora cadastrado ainda.</p>'}</div>
+        <button class="btn pri largo" id="pes-novo">+ Cadastrar pessoa</button></div>
       <p class="sec">Equipamentos</p>
       <div class="card">${eqs.map(e => `<div class="lista-linha"><div><b>${esc(e.nome)}</b><small>${e.exclusivo ? 'Um uso por vez' : `Pedido em quantidade (até ${e.max_qtd})`}${e.identificacao ? ' · ' + esc(e.identificacao) : ''}${e.ativo ? '' : ' · desativado'}</small></div>
         <button class="btn" data-eqed="${e.id}">Editar</button></div>`).join('')}
@@ -588,6 +598,9 @@ async function telaConfig() {
     document.querySelectorAll('[data-eqed]').forEach(b => b.onclick = () => editarEquip(eqs.find(e => e.id === Number(b.dataset.eqed))));
     document.querySelectorAll('[data-blrm]').forEach(b => b.onclick = async () => { try { await api(`/api/logistica/bloqueios/${b.dataset.blrm}/remover`, { method: 'POST' }); toast('Horário liberado.'); telaConfig(); } catch (e) { toast(e.message); } });
     $('#bl-novo').onclick = () => novoBloqueio(eqs);
+    $('#pes-novo').onclick = () => cadastrarPessoa();
+    $('#pes-busca').addEventListener('input', ev => { const q = ev.target.value.trim().toLowerCase(); document.querySelectorAll('.pes').forEach(l => { l.hidden = q && !l.dataset.busca.includes(q); }); });
+    document.querySelectorAll('[data-pesmenu]').forEach(b => b.onclick = () => menuPessoa(pes.find(p => p.matricula === b.dataset.pesmenu)));
     $('#bt-tv').onclick = () => { location.hash = 'tv'; };
     $('#eq-novo').onclick = () => editarEquip({ nome: '', exclusivo: true, max_qtd: 1, ativo: true, ordem: eqs.length });
     document.querySelectorAll('[data-admrm]').forEach(b => b.onclick = async () => { if (!await confirmar('Tirar da gestão?', `${b.dataset.admrm} deixa de receber e decidir os pedidos.`, 'Tirar')) return; try { await api('/api/logistica/admins', { method: 'POST', body: { matricula: b.dataset.admrm, remover: true } }); telaConfig(); } catch (e) { toast(e.message); } });
@@ -613,6 +626,48 @@ function editarEquip(e) {
   });
 }
 async function telaCadastros() { ir('config'); }
+function cadastrarPessoa() {
+  folha(`<h2>Cadastrar pessoa</h2><p class="sub">Para quem não tem conta no OMS. A pessoa entra só neste app.</p>
+    <label class="campo"><span>Matrícula</span><input id="cp-m" autocapitalize="characters" placeholder="Ex.: CBSI01"></label>
+    <label class="campo"><span>Nome completo</span><input id="cp-n"></label>
+    <label class="campo"><span>Setor / empresa</span><input id="cp-s" list="cp-setores" placeholder="Ex.: GMLC, CBSI"><datalist id="cp-setores">${S.eu.setores.concat(['CBSI']).map(x => `<option value="${esc(x)}">`).join('')}</datalist></label>
+    <label class="campo"><span>Telefone (WhatsApp)</span><input id="cp-t" type="tel" inputmode="tel"></label>
+    <p class="aviso sug">No primeiro acesso a senha é a própria matrícula. O app obriga a pessoa a criar uma senha nova.</p>
+    <div class="btns"><button class="btn" data-x>Voltar</button><button class="btn pri" data-ok>Cadastrar</button></div>`, (f, fechar) => {
+    f.querySelector('[data-x]').onclick = fechar;
+    f.querySelector('[data-ok]').onclick = async () => {
+      const v = id => f.querySelector(id).value;
+      try {
+        const r = await api('/api/logistica/pessoas', { method: 'POST', body: { matricula: v('#cp-m'), nome: v('#cp-n'), setor: v('#cp-s'), telefone: v('#cp-t') } });
+        fechar();
+        folha(`<h2>Cadastrado!</h2><p class="sub">Mande para a pessoa:</p><div class="card msg-pronta" id="msg">Seu acesso ao app da Logística está liberado.\nLink: ${location.origin}\nMatrícula: ${r.matricula}\nSenha no 1º acesso: ${r.matricula} (o app pede para trocar)</div>
+          <div class="btns"><button class="btn pri" data-cp>Copiar mensagem</button><button class="btn" data-x>Fechar</button></div>`, (g, fch) => {
+          g.querySelector('[data-x]').onclick = () => { fch(); telaConfig(); };
+          g.querySelector('[data-cp]').onclick = async () => { try { await navigator.clipboard.writeText(g.querySelector('#msg').innerText); toast('Copiado. Cole no WhatsApp.'); } catch { toast('Não deu para copiar. Selecione o texto.'); } };
+        });
+      } catch (e) { toast(e.message); }
+    };
+  });
+}
+function menuPessoa(p) {
+  folha(`<h2>${esc(nomeBonito(p.nome))}</h2><p class="sub">${esc(p.matricula)}${p.setor ? ' · ' + esc(p.setor) : ''} · ${p.pedidos} pedido(s)${p.ultimo_pedido ? ', último em ' + dataBR(p.ultimo_pedido) : ''}</p>
+    ${p.telefone ? `<a class="btn largo" href="tel:${esc(p.telefone)}">📞 Ligar ${esc(p.telefone)}</a>` : ''}
+    <button class="btn largo" data-hist>Ver pedidos dela</button>
+    <button class="btn largo" data-reset>Zerar senha (volta a ser a matrícula)</button>
+    <button class="btn largo ${p.ativo ? 'perigo' : 'ok'}" data-at>${p.ativo ? 'Desativar acesso' : 'Reativar acesso'}</button>
+    <button class="btn largo" data-x>Fechar</button>`, (f, fechar) => {
+    f.querySelector('[data-x]').onclick = fechar;
+    f.querySelector('[data-hist]').onclick = () => { fechar(); S.dados.hist = { de: periodo(365), ate: periodo(-365), equipamento_id: '', setor: '', status: '', q: p.matricula.toLowerCase(), aba: 'lista' }; ir('historico'); };
+    f.querySelector('[data-reset]').onclick = async () => {
+      if (!await confirmar('Zerar a senha?', `A senha de ${nomeBonito(p.nome)} volta a ser a matrícula (${p.matricula}) e ela cria outra ao entrar.`, 'Zerar')) return;
+      try { await api(`/api/logistica/pessoas/${p.matricula}/resetar-senha`, { method: 'POST' }); fechar(); toast('Senha zerada.'); telaConfig(); } catch (e) { toast(e.message); }
+    };
+    f.querySelector('[data-at]').onclick = async () => {
+      if (p.ativo && !await confirmar('Desativar acesso?', `${nomeBonito(p.nome)} sai do app na hora e não consegue mais entrar. Os pedidos dela continuam no histórico.`, 'Desativar')) return;
+      try { await api(`/api/logistica/pessoas/${p.matricula}/ativo`, { method: 'POST', body: { ativo: !p.ativo } }); fechar(); toast(p.ativo ? 'Acesso desativado.' : 'Acesso reativado.'); telaConfig(); } catch (e) { toast(e.message); }
+    };
+  });
+}
 function novoBloqueio(eqs) {
   folha(`<h2>Bloquear horário</h2><p class="sub">Ninguém consegue pedir nesse período. Use para manutenção, feriado ou parada.</p>
     <label class="campo"><span>Equipamento</span><select id="bl-eq">${eqs.filter(e => e.ativo).map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('')}</select></label>
@@ -713,6 +768,47 @@ async function carregarNumeros() {
   } catch (e) { el.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
 }
 
+// ------------------------------------------------------------------ visão geral (início dos gestores)
+async function telaInicio() {
+  moldura('Visão geral', `Olá, ${primeiroNome(S.eu.nome)}`, `<div id="vg"><div class="card"><p class="sub">Carregando…</p></div></div>`);
+  try {
+    const v = await api('/api/logistica/visao');
+    const h = v.hoje_resumo, m = v.mes;
+    const max = Math.max(1, ...v.semana.map(d => d.aprovado + d.pendente));
+    const alerta = [];
+    if (v.emergencias) alerta.push(`<a class="alerta-it urg" href="#painel">🚨 ${v.emergencias} emergência(s) esperando decisão</a>`);
+    if (h.atrasados) alerta.push(`<a class="alerta-it" href="#painel">⏰ ${h.atrasados} transporte(s) de hoje passaram do horário sem sair</a>`);
+    if (v.cadastros) alerta.push(`<a class="alerta-it" href="#config">👤 ${v.cadastros} pedido(s) de cadastro para liberar</a>`);
+    $('#vg').innerHTML = `
+      ${alerta.length ? `<div class="alertas">${alerta.join('')}</div>` : ''}
+      <div class="kpis vg-kpis">
+        <a class="kpi ${v.para_decidir ? 'quente' : ''}" href="#painel"><b>${v.para_decidir}</b><span>para decidir</span></a>
+        <a class="kpi" href="#painel"><b>${v.esperando_resposta}</b><span>esperando a pessoa</span></a>
+        <a class="kpi" href="#agenda"><b>${h.total}</b><span>transportes hoje</span></a>
+        <a class="kpi" href="#agenda"><b>${h.a_caminho}</b><span>a caminho agora</span></a>
+      </div>
+      <div class="vg-grid">
+        <div class="card"><div class="eq-cab"><b>Hoje</b><span>${h.entregues}/${h.total} entregues</span></div>
+          ${v.hoje.length ? v.hoje.map(p => `<div class="vg-hoje ${p.atrasado ? 'atrasado' : ''} ${p.agora ? 'agora' : ''}"><span class="sem-h">${p.inicio.slice(11, 16)}<small>${p.fim.slice(11, 16)}</small></span>
+            <span class="sem-d"><b>${esc(p.equipamento)}${p.quantidade > 1 ? ' ×' + p.quantidade : ''}${p.urgente ? ' 🚨' : ''}</b><small>${esc(p.origem)} → ${esc(p.destino)} · ${esc(nomeBonito(p.solicitante_nome))}</small></span>
+            <span class="selo ${p.fase === 'entregue' ? 'entregue' : p.fase === 'a_caminho' ? 'caminho' : p.atrasado ? 'recusado' : 'aprovado'}">${p.fase === 'entregue' ? 'Entregue' : p.fase === 'a_caminho' ? 'A caminho' : p.atrasado ? 'Atrasado' : p.agora ? 'Agora' : 'Aguardando'}</span></div>`).join('')
+            : '<p class="sub" style="margin-top:8px">Nenhum transporte aprovado para hoje.</p>'}
+          <a class="btn largo" href="#painel" style="margin-top:12px">Marcar saída / entrega</a></div>
+        <div class="card"><div class="eq-cab"><b>Esta semana</b><a class="link" href="#agenda">ver horários</a></div>
+          <div class="vg-sem">${v.semana.map(d => { const dt = new Date(d.dia + 'T12:00'); return `<a class="vg-col ${d.dia === hoje() ? 'hoje' : ''}" href="#agenda">
+            <span class="vg-bar"><i class="a" style="height:${100 * d.aprovado / max}%"></i><i class="p" style="height:${100 * d.pendente / max}%"></i></span>
+            <b>${d.aprovado + d.pendente || ''}</b><small>${SEMANA[dt.getDay()]}</small></a>`; }).join('')}</div>
+          <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Para aprovar</span></div></div>
+        <div class="card"><div class="eq-cab"><b>Este mês</b><a class="link" href="#historico" data-num>ver números</a></div>
+          <div class="kpis mini-kpis"><div class="kpi"><b>${m.total}</b><span>pedidos</span></div><div class="kpi"><b>${tempoTxt(m.tempo_resposta_min)}</b><span>resposta média</span></div>
+            <div class="kpi"><b>${m.recusados_pct == null ? '—' : m.recusados_pct + '%'}</b><span>recusados</span></div><div class="kpi"><b>${m.emergencias}</b><span>emergências</span></div></div>
+          <p class="sec">Por setor</p>${barras(m.por_setor, m.total)}</div>
+      </div>
+      <div class="btns"><a class="btn pri" href="#pedir">+ Novo pedido</a><a class="btn" href="#tv">Tela de TV</a></div>`;
+    const num = document.querySelector('[data-num]'); if (num) num.onclick = () => { S.dados.hist = { de: isoDia(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), ate: periodo(-365), equipamento_id: '', setor: '', status: '', q: '', aba: 'numeros' }; };
+  } catch (e) { $('#vg').innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
+}
+
 // ------------------------------------------------------------------ tela de TV
 async function telaTV() {
   clearInterval(S.tvTimer);
@@ -792,7 +888,7 @@ if (S.sessao) renovar();
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && S.sessao && S.eu) {
     try { S.eu = await api('/api/logistica/eu'); } catch { return; /* sem sinal */ }
-    if (['meus', 'painel', 'agenda'].includes(S.tela) && !document.querySelector('.fundo')) desenhar();
+    if (['meus', 'painel', 'agenda', 'inicio'].includes(S.tela) && !document.querySelector('.fundo')) desenhar();
   }
 });
 desenhar();
