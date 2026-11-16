@@ -51,6 +51,7 @@ const ICO = {
   painel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 17h2m4 0h8m4 0h4V12l-3-5h-5v10"/><path d="M3 17V7h12"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg>',
   config: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   carreta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V6h13v10"/><path d="M15 9h4l3 4v3h-2"/><path d="M2 16h1m4 0h4m4 0h1"/><circle cx="5" cy="17" r="2"/><circle cx="13" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg>',
+  historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg>',
   sair: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
 
@@ -81,7 +82,7 @@ async function renovar() {
 }
 
 // ------------------------------------------------------------------ navegação
-const TELAS_LOGADO = ['pedir', 'agenda', 'meus', 'painel', 'cadastros', 'config'];
+const TELAS_LOGADO = ['pedir', 'agenda', 'meus', 'painel', 'cadastros', 'config', 'historico', 'tv'];
 function ir(tela) { if (location.hash !== '#' + tela) location.hash = tela; else desenhar(); }
 window.addEventListener('hashchange', () => desenhar());
 
@@ -95,9 +96,9 @@ async function desenhar() {
     ativarPush();
   }
   if (S.sessao && !TELAS_LOGADO.includes(tela)) tela = S.eu?.admin ? 'painel' : 'pedir';
-  if (['painel', 'cadastros', 'config'].includes(tela) && !S.eu?.admin) tela = 'pedir';
+  if (['painel', 'cadastros', 'config', 'tv'].includes(tela) && !S.eu?.admin) tela = 'pedir';
   S.tela = tela;
-  const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig }[tela];
+  const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig, historico: telaHistorico, tv: telaTV }[tela];
   await R();
 }
 
@@ -110,8 +111,8 @@ function moldura(titulo, sub, corpo) {
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${corpo}</main>
   <nav class="nav"><div class="nav-in">
-    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Agenda', 'agenda') + item('pedir', 'Novo pedido', 'pedir') + item('config', 'Ajustes', 'config', c || '')
-        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Agenda', 'agenda') + item('meus', 'Meus pedidos', 'meus')}
+    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Agenda', 'agenda') + item('historico', 'Histórico', 'historico') + item('pedir', 'Pedir', 'pedir') + item('config', 'Ajustes', 'config', c || '')
+        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Agenda', 'agenda') + item('meus', 'Meus pedidos', 'meus') + item('historico', 'Histórico', 'historico')}
   </div></nav>`;
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
 }
@@ -231,30 +232,36 @@ async function telaPedir() {
       <label class="campo"><span>Origem</span><input id="p-orig" value="${esc(F.origem || '')}" placeholder="Ex.: Oficina"></label>
       <label class="campo"><span>Destino</span><input id="p-dest" value="${esc(F.destino || '')}" placeholder="Ex.: MCC 4"></label>
     </div>
+    <label class="campo"><span>Peça do OMS (opcional)</span>
+      <div class="busca-peca">${F.equip_oms_id ? `<div class="peca-sel"><b>🔧 ${esc(F.equip_oms_id)}</b><span>${esc(F.equip_oms_desc || '')}</span><button type="button" class="link" id="p-peca-x">Trocar</button></div>`
+        : `<input id="p-peca" placeholder="Digite o código: M-02, S-14…" autocomplete="off"><div id="p-peca-res" class="peca-res"></div>`}</div></label>
     <label class="campo"><span>O que vai transportar</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
+    <label class="campo"><span>Repetir</span><select id="p-rep">${[[0, 'Só esta vez'], [1, 'Toda semana, por 2 semanas'], [3, 'Toda semana, por 4 semanas'], [7, 'Toda semana, por 8 semanas'], [11, 'Toda semana, por 12 semanas']].map(([v, t]) => `<option value="${v}" ${Number(F.repetir || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
     <label class="campo"><span>Observação (opcional)</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
     <label class="card" style="display:flex;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" id="p-urg" ${F.urgente ? 'checked' : ''} style="width:24px;min-height:24px;accent-color:var(--erro)">
       <span><b>É emergência?</b><br><span class="sub">Marque só se não puder esperar. A logística vê primeiro.</span></span></label>
     <p class="erro-msg" id="p-erro" hidden></p>
     <p class="resumo-pedido" id="p-resumo"></p><button class="btn pri largo" id="p-enviar">Enviar pedido</button>` : '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
   if (!S.equipamentos.length) return;
-  const salvar = () => Object.assign(F, { inicio: $('#p-ini').value, fim: $('#p-fim').value, setor: $('#p-setor').value, origem: $('#p-orig').value, destino: $('#p-dest').value, carga: $('#p-carga').value, observacao: $('#p-obs').value, urgente: $('#p-urg').checked });
+  const salvar = () => Object.assign(F, { inicio: $('#p-ini').value, fim: $('#p-fim').value, setor: $('#p-setor').value, origem: $('#p-orig').value, destino: $('#p-dest').value, carga: $('#p-carga').value, observacao: $('#p-obs').value, urgente: $('#p-urg').checked, repetir: Number($('#p-rep').value) || 0 });
   document.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { salvar(); F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; telaPedir(); });
   document.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { salvar(); F.data = b.dataset.dia; telaPedir(); });
   ['#p-ini', '#p-fim'].forEach(s => $(s).addEventListener('change', () => { salvar(); desenharOcupacao(); }));
   desenharQtd();
+  ligarBuscaPeca(salvar);
   $('#p-fila') && ($('#p-fila').onclick = enviarFila);
   $('#p-enviar').onclick = async () => {
     salvar();
     const er = $('#p-erro'); er.hidden = true;
-    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: F.origem, destino: F.destino, carga: F.carga, observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente };
+    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: F.origem, destino: F.destino, carga: F.carga, observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
     if (!F.setor) { er.textContent = 'Escolha o setor.'; er.hidden = false; return; }
     if (!F.origem.trim() || !F.destino.trim() || !F.carga.trim()) { er.textContent = 'Preencha origem, destino e o que vai transportar.'; er.hidden = false; return; }
     const bt = $('#p-enviar'); bt.disabled = true;
     try {
       const r = await api('/api/logistica/pedidos', { method: 'POST', body: corpo });
       S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, fim: F.fim, quantidade: 1, setor: F.setor, urgente: false };
-      toast(r.disputa ? 'Pedido enviado. Outra pessoa também pediu esse horário: a logística decide.' : 'Pedido enviado para a logística.');
+      toast(r.criados > 1 ? `${r.criados} pedidos enviados (um por semana)${r.pulados?.length ? `. Ocupado em ${r.pulados.join(', ')}: esses não entraram` : ''}.`
+        : r.disputa ? 'Pedido enviado. Outra pessoa também pediu esse horário: a logística decide.' : 'Pedido enviado para a logística.');
       ir('meus');
     } catch (e) {
       if (e.rede) {
@@ -268,6 +275,28 @@ async function telaPedir() {
   const resumir = () => { salvar(); const e = eqSel(); $('#p-resumo').textContent = `${e.nome}${F.quantidade > 1 ? ' × ' + F.quantidade : ''} · ${F.data === amanha() ? 'amanhã' : dataBR(F.data)} ${F.inicio}–${F.fim}${F.origem && F.destino ? ' · ' + F.origem + ' → ' + F.destino : ''}`; };
   document.querySelectorAll('#app input, #app select, #app textarea').forEach(el => el.addEventListener('input', resumir)); resumir();
   desenharOcupacao();
+}
+function ligarBuscaPeca(salvar) {
+  const F = S.form;
+  const x = $('#p-peca-x'); if (x) x.onclick = () => { salvar(); F.equip_oms_id = null; F.equip_oms_desc = null; telaPedir(); };
+  const inp = $('#p-peca'); if (!inp) return;
+  let t;
+  inp.addEventListener('input', () => {
+    clearTimeout(t);
+    const q = inp.value.trim(), res = $('#p-peca-res');
+    if (q.length < 2) { res.innerHTML = ''; return; }
+    t = setTimeout(async () => {
+      try {
+        const l = await api(`/api/logistica/pecas?q=${encodeURIComponent(q)}`);
+        res.innerHTML = l.length ? l.map(p => `<button type="button" data-peca="${esc(p.id)}" data-desc="${esc([p.tipo, p.local].filter(Boolean).join(' · '))}"><b>${esc(p.id)}</b><span>${esc(p.tipo || '')}${p.local ? ' · ' + esc(p.local) : ''}</span></button>`).join('') : '<p class="mini">Nada encontrado no OMS. Escreva no campo de baixo.</p>';
+        res.querySelectorAll('[data-peca]').forEach(b => b.onclick = () => {
+          salvar(); F.equip_oms_id = b.dataset.peca; F.equip_oms_desc = b.dataset.desc;
+          if (!(F.carga || '').trim()) F.carga = `${b.dataset.peca}${b.dataset.desc ? ' (' + b.dataset.desc.split(' · ')[0] + ')' : ''}`;
+          telaPedir();
+        });
+      } catch { res.innerHTML = ''; }
+    }, 250);
+  });
 }
 function diaSeguinte(iso) { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + 1); return isoDia(d); }
 function proximosDias(n) {
@@ -285,19 +314,21 @@ async function desenharOcupacao() {
   const el = $('#p-ocupacao'); if (!el) return;
   const e = eqSel();
   try {
-    const lista = await api(`/api/logistica/agenda?inicio=${S.form.data}&dias=1&equipamento_id=${e.id}`);
+    const [lista, bls] = await Promise.all([api(`/api/logistica/agenda?inicio=${S.form.data}&dias=1&equipamento_id=${e.id}`), api(`/api/logistica/bloqueios?inicio=${S.form.data}&dias=1`)]);
+    const bl = bls.filter(b => b.equipamento_id === e.id);
     if (!$('#p-ocupacao')) return;
     const ini = S.form.inicio, fim = S.form.fim;
     const choque = e.exclusivo && lista.some(p => p.status === 'aprovado' && p.inicio.slice(11, 16) < (fim > ini ? fim : '24:00') && p.fim.slice(11, 16) > ini && p.inicio.slice(0, 10) === S.form.data);
     el.innerHTML = `<div class="eq-cab"><b>${esc(e.nome)} · ${dataBR(S.form.data)}</b><span>${lista.length ? `${lista.length} reserva(s)` : 'livre o dia todo'}</span></div>
-      ${trilho(lista, S.form.data, { ini, fim })}
+      ${trilho(lista, S.form.data, { ini, fim }, bl)}
+      ${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > S.form.data ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}
       ${choque ? '<div class="aviso conf">Esse horário já tem reserva aprovada. Escolha outro horário.</div>' : ''}
       ${!e.exclusivo ? '<p class="mini">A carreta é fornecida pela CBSI: pode haver mais de um pedido no mesmo horário. A logística confirma.</p>' : ''}
       ${lista.map(linhaReserva).join('')}`;
   } catch (err) { el.innerHTML = `<p class="sub">${esc(err.message)}</p>`; }
 }
 function minutos(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
-function trilho(lista, dia, sel) {
+function trilho(lista, dia, sel, bloqueios = []) {
   const pos = p => {
     const a = p.inicio.slice(0, 10) < dia ? 0 : minutos(p.inicio.slice(11, 16));
     const b = p.fim.slice(0, 10) > dia ? 1440 : minutos(p.fim.slice(11, 16));
@@ -308,7 +339,8 @@ function trilho(lista, dia, sel) {
     const a = minutos(sel.ini), b = sel.fim > sel.ini ? minutos(sel.fim) : 1440;
     s = `<div class="bloco" style="left:${a / 14.4}%;width:${(b - a) / 14.4}%;background:transparent;outline:2px dashed var(--texto);opacity:1"></div>`;
   }
-  return `<div class="trilho">${lista.map(p => `<div class="bloco ${p.status} ${p.meu ? 'meu' : ''}" style="${pos(p)}" title="${esc(p.inicio.slice(11, 16))}–${esc(p.fim.slice(11, 16))}"></div>`).join('')}${s}</div>
+  const bq = bloqueios.map(b => `<div class="bloco bloqueado" style="${pos(b)}" title="Bloqueado"></div>`).join('');
+  return `<div class="trilho">${bq}${lista.map(p => `<div class="bloco ${p.status} ${p.meu ? 'meu' : ''}" style="${pos(p)}" title="${esc(p.inicio.slice(11, 16))}–${esc(p.fim.slice(11, 16))}"></div>`).join('')}${s}</div>
     <div class="horas"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>`;
 }
 function linhaReserva(p) {
@@ -336,15 +368,15 @@ async function telaAgenda() {
   const dia = S.dados.dia;
   moldura('Agenda', 'Reservas aprovadas e pedidos aguardando', `
     <div class="chips">${proximosDias(14).map(d => `<button class="chip dia-chip ${d.iso === dia ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
-    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Aguardando a logística</span></div>
+    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Aguardando a logística</span><span><i class="b"></i>Bloqueado</span></div>
     <div id="ag-lista"><div class="card"><p class="sub">Carregando…</p></div></div>`);
   document.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { S.dados.dia = b.dataset.dia; telaAgenda(); });
   try {
-    const lista = await api(`/api/logistica/agenda?inicio=${dia}&dias=1`);
+    const [lista, bls] = await Promise.all([api(`/api/logistica/agenda?inicio=${dia}&dias=1`), api(`/api/logistica/bloqueios?inicio=${dia}&dias=1`)]);
     $('#ag-lista').innerHTML = S.equipamentos.map(e => {
-      const meus = lista.filter(p => p.equipamento_id === e.id);
+      const meus = lista.filter(p => p.equipamento_id === e.id), bl = bls.filter(b => b.equipamento_id === e.id);
       return `<div class="card eq"><div class="eq-cab"><b>${esc(e.nome)}</b><span>${meus.length ? `${meus.length} reserva(s)` : 'livre'}</span></div>
-        ${trilho(meus, dia)}${meus.map(linhaReserva).join('')}
+        ${trilho(meus, dia, null, bl)}${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > dia ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}${meus.map(linhaReserva).join('')}
         <button class="btn largo" data-pedir="${e.id}" style="margin-top:12px">Pedir ${esc(e.nome)} neste dia</button></div>`;
     }).join('');
     document.querySelectorAll('[data-pedir]').forEach(b => b.onclick = () => { Object.assign(S.form, { equipamento_id: Number(b.dataset.pedir), data: dia, quantidade: 1 }); ir('pedir'); });
@@ -353,25 +385,37 @@ async function telaAgenda() {
 
 // ------------------------------------------------------------------ meus pedidos
 function cartaoPedido(p, admin) {
-  const rot = { pendente: 'Aguardando', aprovado: 'Aprovado', recusado: 'Recusado', cancelado: 'Cancelado', sugerido: 'Aguardando' }[p.status] || p.status;
+  const rot = p.fase === 'entregue' ? 'Entregue' : p.fase === 'a_caminho' ? 'A caminho' : ({ pendente: 'Aguardando', aprovado: 'Aprovado', recusado: 'Recusado', cancelado: 'Cancelado', sugerido: 'Aguardando' }[p.status] || p.status);
+  const seloCls = p.fase === 'entregue' ? 'entregue' : p.fase === 'a_caminho' ? 'caminho' : p.status;
   const ativo = ['pendente', 'aprovado'].includes(p.status) && p.fim >= `${hoje()} 00:00`;
   return `<div class="card ped st-${p.status} ${p.urgente && p.status === 'pendente' ? 'urg' : ''}">
-    <div class="ped-top"><h3>${p.urgente ? '🚨 ' : ''}${esc(p.equipamento)}${p.quantidade > 1 ? ` <span class="sub">× ${p.quantidade}</span>` : ''}</h3><span class="selo ${p.status}">${rot}</span></div>
+    <div class="ped-top"><h3>${p.urgente ? '🚨 ' : ''}${esc(p.equipamento)}${p.quantidade > 1 ? ` <span class="sub">× ${p.quantidade}</span>` : ''}</h3><span class="selo ${seloCls}">${rot}</span></div>
     ${admin ? `<p class="ped-quem">${esc(nomeBonito(p.solicitante_nome) || p.solicitante)}${p.setor ? ` <span>· ${esc(p.setor)}</span>` : ''}</p>` : ''}
     <p class="ped-quando">${quando(p)}</p>
     <p class="ped-rota"><b>${esc(p.origem)}</b> → <b>${esc(p.destino)}</b> · ${esc(p.carga)}</p>
+    ${p.equip_oms_id || p.serie_id ? `<p class="ped-tags">${p.equip_oms_id ? `<span class="tag">🔧 ${esc(p.equip_oms_id)}</span>` : ''}${p.serie_id ? '<span class="tag">↻ semanal</span>' : ''}</p>` : ''}
+    ${p.status === 'aprovado' ? linhaTransporte(p) : ''}
     ${admin && p.solicitante_telefone ? `<p class="ped-rota">📞 <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a> · matrícula ${esc(p.solicitante)}</p>` : admin ? `<p class="ped-rota">matrícula ${esc(p.solicitante)}</p>` : ''}
     ${p.observacao ? `<p class="mini">“${esc(p.observacao)}”</p>` : ''}
     ${p.reagendado && p.status === 'aprovado' ? `<div class="aviso sug">A logística remarcou: você pediu ${dataBR(p.sugestao_inicio)}.${p.motivo ? ' ' + esc(p.motivo) : ''}</div>` : ''}
     ${p.status === 'recusado' && p.motivo ? `<div class="aviso conf">Motivo: ${esc(p.motivo)}</div>` : ''}
     ${admin && p.conflitos?.length ? `<div class="aviso conf">Choca com: ${p.conflitos.map(c => `${esc(nomeBonito(c.nome) || '')} ${c.inicio.slice(11)}–${c.fim.slice(11)} (${c.status === 'aprovado' ? 'aprovado' : 'aguardando'})`).join('; ')}</div>` : ''}
     ${admin && ['pendente', 'sugerido'].includes(p.status) ? `<div class="btns"><button class="btn ok" data-ap="${p.id}">Aprovar</button><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-rc="${p.id}">Recusar</button></div>` : ''}
-    ${admin && p.status === 'aprovado' ? `<div class="btns"><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}
-    ${!admin && ativo ? `<div class="btns"><button class="btn perigo" data-cn="${p.id}">Cancelar pedido</button></div>` : ''}
+    ${admin && p.status === 'aprovado' && !p.entregue_em ? `<div class="btns">${!p.saiu_em ? `<button class="btn pri" data-saiu="${p.id}">Saiu</button>` : ''}<button class="btn ok" data-ent="${p.id}">Entregue</button></div>
+      ${!p.saiu_em ? `<div class="btns"><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}` : ''}
+    ${!admin && ativo && !p.saiu_em ? `<div class="btns"><button class="btn perigo" data-cn="${p.id}">Cancelar pedido</button></div>` : ''}
     ${p.decidido_por_nome && p.status !== 'pendente' ? `<p class="mini">${p.status === 'cancelado' ? 'Cancelado' : 'Decidido'} por ${esc(primeiroNome(p.decidido_por_nome))} em ${dataBR(p.decidido_em)}</p>` : `<p class="mini">Pedido em ${dataBR(p.criado_em)}</p>`}
   </div>`;
 }
+function linhaTransporte(p) {
+  const h = t => t ? t.slice(11, 16) : '';
+  const passos = [['Aprovado', true, h(p.decidido_em)], ['Saiu', !!p.saiu_em, h(p.saiu_em)], ['Entregue', !!p.entregue_em, h(p.entregue_em)]];
+  return `<div class="fases">${passos.map(([n, ok, t]) => `<span class="fase ${ok ? 'ok' : ''}"><i></i>${n}${ok && t ? ` <small>${t}</small>` : ''}</span>`).join('')}</div>`;
+}
 function ligarAcoes(recarregar) {
+  const mudar = async (id, rota, msg) => { try { await api(`/api/logistica/pedidos/${id}/${rota}`, { method: 'POST' }); toast(msg); recarregar(); } catch (e) { toast(e.message); } };
+  document.querySelectorAll('[data-saiu]').forEach(b => b.onclick = () => mudar(b.dataset.saiu, 'saiu', 'Marcado como saiu. Quem pediu foi avisado.'));
+  document.querySelectorAll('[data-ent]').forEach(b => b.onclick = () => mudar(b.dataset.ent, 'entregue', 'Entregue. Quem pediu foi avisado.'));
   const acao = async (id, body, msg) => { try { await api(`/api/logistica/pedidos/${id}/decidir`, { method: 'POST', body }); toast(msg); S.eu = await api('/api/logistica/eu'); recarregar(); } catch (e) { toast(e.message); } };
   document.querySelectorAll('[data-ap]').forEach(b => b.onclick = () => acao(b.dataset.ap, { acao: 'aprovar' }, 'Aprovado. Quem pediu foi avisado.'));
   document.querySelectorAll('[data-rc]').forEach(b => b.onclick = () => folha(`<h2>Recusar pedido</h2><p class="sub">Quem pediu vai ver o motivo.</p>
@@ -446,7 +490,7 @@ async function telaPainel() {
 async function telaConfig() {
   moldura('Ajustes', 'Cadastros, equipamentos e quem gerencia', '<div id="cf"><div class="card"><p class="sub">Carregando…</p></div></div>');
   try {
-    const [cads, eqs, adms] = await Promise.all([api('/api/logistica/cadastros'), api('/api/logistica/equipamentos?todos=true'), api('/api/logistica/admins')]);
+    const [cads, eqs, adms, bls] = await Promise.all([api('/api/logistica/cadastros'), api('/api/logistica/equipamentos?todos=true'), api('/api/logistica/admins'), api(`/api/logistica/bloqueios?inicio=${hoje()}&dias=60`)]);
     $('#cf').innerHTML = `
       <p class="sec">Pedidos de cadastro</p>
       <div class="card">${cads.length ? cads.map(c => `<div class="lista-linha"><div><b>${esc(c.nome)}</b><small>${esc(c.matricula)} · ${esc(c.setor || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}</small></div>
@@ -455,6 +499,11 @@ async function telaConfig() {
       <div class="card">${eqs.map(e => `<div class="lista-linha"><div><b>${esc(e.nome)}</b><small>${e.exclusivo ? 'Um uso por vez' : `Pedido em quantidade (até ${e.max_qtd})`}${e.identificacao ? ' · ' + esc(e.identificacao) : ''}${e.ativo ? '' : ' · desativado'}</small></div>
         <button class="btn" data-eqed="${e.id}">Editar</button></div>`).join('')}
         <button class="btn largo" id="eq-novo">+ Novo equipamento</button></div>
+      <p class="sec">Horários bloqueados</p>
+      <div class="card">${bls.length ? bls.map(b => `<div class="lista-linha"><div><b>${esc(b.equipamento)}</b><small>${dataBR(b.inicio)} até ${dataBR(b.fim)}${b.motivo ? ' · ' + esc(b.motivo) : ''}</small></div><button class="btn perigo" data-blrm="${b.id}">Liberar</button></div>`).join('') : '<p class="sub">Nenhum bloqueio nos próximos 60 dias.</p>'}
+        <button class="btn largo" id="bl-novo">+ Bloquear horário (manutenção, feriado…)</button></div>
+      <p class="sec">Tela de TV</p>
+      <div class="card"><p class="sub">Agenda de hoje e amanhã em letra grande, para deixar aberta numa TV ou monitor do escritório. Atualiza sozinha.</p><button class="btn largo" id="bt-tv">Abrir tela de TV</button></div>
       <p class="sec">Quem gerencia (técnicos da logística)</p>
       <div class="card">${adms.map(a => `<div class="lista-linha"><div><b>${esc(a.nome || a.matricula)}</b><small>${esc(a.matricula)}</small></div>${a.matricula !== S.sessao.matricula ? `<button class="btn perigo" data-admrm="${esc(a.matricula)}">Tirar</button>` : '<small>você</small>'}</div>`).join('')}
         <div class="dupla" style="margin-top:12px;grid-template-columns:1fr auto"><input id="adm-mat" placeholder="Matrícula" autocapitalize="characters"><button class="btn pri" id="adm-add">Adicionar</button></div>
@@ -464,6 +513,9 @@ async function telaConfig() {
     document.querySelectorAll('[data-cok]').forEach(b => b.onclick = () => decidir(b.dataset.cok, true));
     document.querySelectorAll('[data-cno]').forEach(b => b.onclick = async () => { if (await confirmar('Recusar cadastro?', 'A pessoa não vai conseguir entrar.', 'Recusar')) decidir(b.dataset.cno, false); });
     document.querySelectorAll('[data-eqed]').forEach(b => b.onclick = () => editarEquip(eqs.find(e => e.id === Number(b.dataset.eqed))));
+    document.querySelectorAll('[data-blrm]').forEach(b => b.onclick = async () => { try { await api(`/api/logistica/bloqueios/${b.dataset.blrm}/remover`, { method: 'POST' }); toast('Horário liberado.'); telaConfig(); } catch (e) { toast(e.message); } });
+    $('#bl-novo').onclick = () => novoBloqueio(eqs);
+    $('#bt-tv').onclick = () => { location.hash = 'tv'; };
     $('#eq-novo').onclick = () => editarEquip({ nome: '', exclusivo: true, max_qtd: 1, ativo: true, ordem: eqs.length });
     document.querySelectorAll('[data-admrm]').forEach(b => b.onclick = async () => { if (!await confirmar('Tirar da gestão?', `${b.dataset.admrm} deixa de receber e decidir os pedidos.`, 'Tirar')) return; try { await api('/api/logistica/admins', { method: 'POST', body: { matricula: b.dataset.admrm, remover: true } }); telaConfig(); } catch (e) { toast(e.message); } });
     $('#adm-add').onclick = async () => { try { await api('/api/logistica/admins', { method: 'POST', body: { matricula: $('#adm-mat').value } }); toast('Adicionado.'); telaConfig(); } catch (e) { toast(e.message); } };
@@ -488,6 +540,128 @@ function editarEquip(e) {
   });
 }
 async function telaCadastros() { ir('config'); }
+function novoBloqueio(eqs) {
+  folha(`<h2>Bloquear horário</h2><p class="sub">Ninguém consegue pedir nesse período. Use para manutenção, feriado ou parada.</p>
+    <label class="campo"><span>Equipamento</span><select id="bl-eq">${eqs.filter(e => e.ativo).map(e => `<option value="${e.id}">${esc(e.nome)}</option>`).join('')}</select></label>
+    <div class="dupla"><label class="campo"><span>De (dia)</span><input type="date" id="bl-d1" value="${amanha()}"></label><label class="campo"><span>Hora</span><input type="time" id="bl-h1" value="00:00"></label></div>
+    <div class="dupla"><label class="campo"><span>Até (dia)</span><input type="date" id="bl-d2" value="${amanha()}"></label><label class="campo"><span>Hora</span><input type="time" id="bl-h2" value="23:59"></label></div>
+    <label class="campo"><span>Motivo</span><input id="bl-m" placeholder="Ex.: Manutenção preventiva"></label>
+    <div class="btns"><button class="btn" data-x>Voltar</button><button class="btn pri" data-ok>Bloquear</button></div>`, (f, fechar) => {
+    f.querySelector('[data-x]').onclick = fechar;
+    f.querySelector('[data-ok]').onclick = async () => {
+      const v = id => f.querySelector(id).value;
+      try {
+        const r = await api('/api/logistica/bloqueios', { method: 'POST', body: { equipamento_id: Number(v('#bl-eq')), inicio: `${v('#bl-d1')} ${v('#bl-h1')}`, fim: `${v('#bl-d2')} ${v('#bl-h2')}`, motivo: v('#bl-m') } });
+        fechar(); toast(r.pedidos_afetados ? `Bloqueado. Atenção: ${r.pedidos_afetados} pedido(s) aprovado(s) nesse período precisam ser remarcados.` : 'Horário bloqueado.'); telaConfig();
+      } catch (e) { toast(e.message); }
+    };
+  });
+}
+
+// ------------------------------------------------------------------ histórico e números
+function periodo(dias) { const d = new Date(); d.setDate(d.getDate() - dias); return isoDia(d); }
+// o histórico também mostra o que já está agendado para frente (até 1 ano)
+const ATE_PADRAO = () => periodo(-365);
+async function telaHistorico() {
+  const H = S.dados.hist || (S.dados.hist = { de: periodo(30), ate: ATE_PADRAO(), equipamento_id: '', setor: '', status: '', q: '', aba: 'lista' });
+  const adm = S.eu.admin;
+  moldura('Histórico', adm ? 'Todos os pedidos, com filtros' : 'Seus pedidos, com filtros', `
+    ${adm ? `<div class="chips"><button class="chip ${H.aba === 'lista' ? 'on' : ''}" data-haba="lista">Lista</button><button class="chip ${H.aba === 'numeros' ? 'on' : ''}" data-haba="numeros">Números</button></div>` : ''}
+    <div class="card filtros">
+      <div class="chips">${[[7, 'Últimos 7 dias'], [30, 'Últimos 30 dias'], [90, 'Últimos 3 meses'], [365, 'Último ano']].map(([d, t]) => `<button class="chip ${H.de === periodo(d) && H.ate === ATE_PADRAO() ? 'on' : ''}" data-per="${d}">${t}</button>`).join('')}</div>
+      <div class="dupla"><label class="campo"><span>De</span><input type="date" id="h-de" value="${H.de}"></label><label class="campo"><span>Até</span><input type="date" id="h-ate" value="${H.ate}"></label></div>
+      ${H.aba === 'lista' ? `<div class="filtros-grid">
+        <label class="campo"><span>Equipamento</span><select id="h-eq"><option value="">Todos</option>${S.equipamentos.map(e => `<option value="${e.id}" ${String(e.id) === String(H.equipamento_id) ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select></label>
+        <label class="campo"><span>Setor</span><select id="h-setor"><option value="">Todos</option>${S.eu.setores.map(x => `<option ${x === H.setor ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+        <label class="campo"><span>Situação</span><select id="h-st"><option value="">Todas</option>${[['aprovado', 'Aprovado'], ['pendente', 'Aguardando'], ['recusado', 'Recusado'], ['cancelado', 'Cancelado']].map(([v, t]) => `<option value="${v}" ${v === H.status ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label class="campo"><span>Buscar</span><input id="h-q" value="${esc(H.q)}" placeholder="Nome, peça, origem, destino…"></label></div>` : ''}
+    </div>
+    <div id="h-res"><div class="card"><p class="sub">Carregando…</p></div></div>`);
+  document.querySelectorAll('[data-haba]').forEach(b => b.onclick = () => { H.aba = b.dataset.haba; telaHistorico(); });
+  document.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { H.de = periodo(Number(b.dataset.per)); H.ate = ATE_PADRAO(); telaHistorico(); });
+  const ler = () => { H.de = $('#h-de').value; H.ate = $('#h-ate').value; if ($('#h-eq')) Object.assign(H, { equipamento_id: $('#h-eq').value, setor: $('#h-setor').value, status: $('#h-st').value, q: $('#h-q').value }); };
+  ['#h-de', '#h-ate', '#h-eq', '#h-setor', '#h-st'].forEach(id => $(id) && $(id).addEventListener('change', () => { ler(); telaHistorico(); }));
+  let t; $('#h-q') && $('#h-q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { ler(); carregarHist(); }, 400); });
+  H.aba === 'numeros' && adm ? carregarNumeros() : carregarHist();
+}
+async function carregarHist() {
+  const H = S.dados.hist, el = $('#h-res'); if (!el) return;
+  const qs = new URLSearchParams({ de: H.de, ate: H.ate }); ['equipamento_id', 'setor', 'status', 'q'].forEach(k => H[k] && qs.set(k, H[k]));
+  try {
+    const d = await api(`/api/logistica/historico?${qs}`); S.dados.histItens = d.itens;
+    const r = d.resumo;
+    el.innerHTML = `<div class="resumo resumo4"><div class="res"><b>${r.total}</b><span>pedidos</span></div><div class="res"><b>${r.aprovado}</b><span>aprovados</span></div><div class="res"><b>${r.recusado}</b><span>recusados</span></div><div class="res"><b>${r.cancelado}</b><span>cancelados</span></div></div>
+      ${d.itens.length ? `<button class="btn largo" id="h-csv" style="margin:0 0 6px">⬇ Baixar planilha (Excel)</button>
+      <div class="card tabela">${d.itens.map(i => `<div class="hl">
+        <div class="hl-q"><b>${dataBR(i.inicio)}</b><small>${i.inicio.slice(11, 16)}–${i.fim.slice(11, 16)}</small></div>
+        <div class="hl-o"><b>${esc(i.equipamento)}${i.quantidade > 1 ? ' ×' + i.quantidade : ''}${i.urgente ? ' 🚨' : ''}</b><small>${esc(nomeBonito(i.solicitante_nome) || i.solicitante)}${i.setor ? ' · ' + esc(i.setor) : ''}</small>
+          <small>${esc(i.origem)} → ${esc(i.destino)} · ${esc(i.carga)}${i.equip_oms_id ? ' · 🔧 ' + esc(i.equip_oms_id) : ''}</small>${i.status === 'recusado' && i.motivo ? `<small class="ruim">Motivo: ${esc(i.motivo)}</small>` : ''}</div>
+        <span class="selo ${i.fase === 'entregue' ? 'entregue' : i.status}">${i.fase === 'entregue' ? 'Entregue' : esc(i.status_nome)}</span></div>`).join('')}</div>
+      ${d.itens.length >= 500 ? '<p class="mini">Mostrando os 500 mais recentes. Diminua o período para ver o resto.</p>' : ''}`
+      : '<div class="vazio"><b>Nada nesse período</b>Mude as datas ou os filtros.</div>'}`;
+    $('#h-csv') && ($('#h-csv').onclick = () => baixarCSV(d.itens, `logistica_${H.de}_a_${H.ate}.csv`));
+  } catch (e) { el.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
+}
+function baixarCSV(itens, nome) {
+  const col = [['Data', i => dataBR(i.inicio).slice(0, 5) + '/' + i.inicio.slice(0, 4)], ['Início', i => i.inicio.slice(11, 16)], ['Fim', i => i.fim.slice(11, 16)], ['Equipamento', i => i.equipamento], ['Qtd', i => i.quantidade],
+    ['Solicitante', i => nomeBonito(i.solicitante_nome) || i.solicitante], ['Matrícula', i => i.solicitante], ['Setor', i => i.setor], ['Origem', i => i.origem], ['Destino', i => i.destino], ['Carga', i => i.carga],
+    ['Peça OMS', i => i.equip_oms_id], ['Emergência', i => i.urgente ? 'Sim' : 'Não'], ['Situação', i => i.fase === 'entregue' ? 'Entregue' : i.status_nome], ['Motivo', i => i.motivo],
+    ['Pedido em', i => dataBR(i.criado_em)], ['Decidido por', i => nomeBonito(i.decidido_por_nome)], ['Decidido em', i => dataBR(i.decidido_em)], ['Saiu', i => dataBR(i.saiu_em)], ['Entregue', i => dataBR(i.entregue_em)]];
+  const cel = v => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const csv = '\ufeff' + [col.map(c => c[0]).join(';'), ...itens.map(i => col.map(c => cel(c[1](i))).join(';'))].join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+}
+function barras(lista, total) {
+  if (!lista.length) return '<p class="sub">Sem dados.</p>';
+  const mx = Math.max(...lista.map(x => x.total));
+  return lista.map(x => `<div class="barra"><span class="barra-n">${esc(x.nome)}</span><span class="barra-t"><i style="width:${Math.max(3, 100 * x.total / mx)}%"></i></span><b>${x.total}</b>${total ? `<small>${Math.round(100 * x.total / total)}%</small>` : ''}</div>`).join('');
+}
+const tempoTxt = m => m == null ? '—' : m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, '0') : ''}` : `${(m / 1440).toFixed(1).replace('.', ',')} dias`;
+async function carregarNumeros() {
+  const H = S.dados.hist, el = $('#h-res');
+  try {
+    const r = await api(`/api/logistica/relatorio?de=${H.de}&ate=${H.ate}`);
+    el.innerHTML = `<div class="kpis">
+      <div class="kpi"><b>${r.total}</b><span>pedidos</span></div>
+      <div class="kpi"><b>${tempoTxt(r.tempo_resposta_min)}</b><span>tempo médio de resposta</span></div>
+      <div class="kpi"><b>${r.recusados_pct == null ? '—' : r.recusados_pct + '%'}</b><span>recusados</span></div>
+      <div class="kpi"><b>${r.emergencias}</b><span>emergências</span></div>
+      <div class="kpi"><b>${r.entregues}</b><span>entregues</span></div>
+      <div class="kpi"><b>${tempoTxt(r.tempo_transporte_min)}</b><span>tempo médio de transporte</span></div></div>
+      <div class="graf-grid">
+        <div class="card"><p class="sec">Por equipamento</p>${barras(r.por_equipamento, r.total)}</div>
+        <div class="card"><p class="sec">Por setor</p>${barras(r.por_setor, r.total)}</div>
+        <div class="card"><p class="sec">Situação</p>${barras(r.por_status, r.total)}</div>
+        <div class="card"><p class="sec">Por mês</p>${barras(r.por_mes.map(x => ({ ...x, nome: x.nome.slice(5) + '/' + x.nome.slice(0, 4) })))}</div>
+        <div class="card"><p class="sec">Quem mais pede</p>${barras(r.quem_mais_pede.map(x => ({ ...x, nome: nomeBonito(x.nome) })))}</div>
+        <div class="card"><p class="sec">Motivos de recusa</p>${barras(r.motivos_recusa)}</div>
+      </div>
+      <p class="mini">Tempo de resposta: do pedido até a logística aprovar ou recusar. Tempo de transporte: de "Saiu" até "Entregue".</p>`;
+  } catch (e) { el.innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
+}
+
+// ------------------------------------------------------------------ tela de TV
+async function telaTV() {
+  clearInterval(S.tvTimer);
+  const desenharTV = async () => {
+    if (S.tela !== 'tv') return clearInterval(S.tvTimer);
+    try {
+      const [l, bl] = await Promise.all([api(`/api/logistica/agenda?inicio=${hoje()}&dias=2`), api(`/api/logistica/bloqueios?inicio=${hoje()}&dias=2`)]);
+      const agora = new Date(), hh = `${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
+      const col = (dia, rot) => `<div class="tv-col"><h2>${rot} <small>${dataBR(dia)}</small></h2>${S.equipamentos.map(e => {
+        const ps = l.filter(p => p.equipamento_id === e.id && p.inicio.slice(0, 10) <= dia && p.fim.slice(0, 10) >= dia);
+        const bs = bl.filter(b => b.equipamento_id === e.id && b.inicio.slice(0, 10) <= dia && b.fim.slice(0, 10) >= dia);
+        return `<div class="tv-eq"><h3>${esc(e.nome)}</h3>${bs.map(b => `<div class="tv-it bloq">⛔ Bloqueado${b.motivo ? ' · ' + esc(b.motivo) : ''}</div>`).join('')}
+          ${ps.length ? ps.map(p => { const agoraNela = dia === hoje() && p.inicio.slice(11, 16) <= hh && p.fim.slice(11, 16) > hh;
+            return `<div class="tv-it ${p.status} ${agoraNela ? 'agora' : ''}"><span class="tv-h">${p.inicio.slice(11, 16)}–${p.fim.slice(11, 16)}</span><span class="tv-d"><b>${esc(p.origem)} → ${esc(p.destino)}${p.quantidade > 1 ? ' · ' + p.quantidade + ' un.' : ''}</b><small>${esc(nomeBonito(p.solicitante_nome))}${p.setor ? ' · ' + esc(p.setor) : ''}${p.status === 'pendente' ? ' · aguardando' : ''}${p.urgente ? ' · 🚨' : ''}</small></span></div>`; }).join('') : '<div class="tv-livre">Livre</div>'}</div>`;
+      }).join('')}</div>`;
+      $('#app').innerHTML = `<div class="tv"><header><img src="icons/icon-192.png" alt=""><b>OMS Logística</b><span class="tv-hora">${hh}</span><button class="btn" onclick="location.hash='config'">Sair da TV</button></header>
+        <div class="tv-grid">${col(hoje(), 'Hoje')}${col(amanha(), 'Amanhã')}</div></div>`;
+    } catch { /* sem sinal: tenta de novo no próximo minuto */ }
+  };
+  await desenharTV();
+  S.tvTimer = setInterval(desenharTV, 60 * 1000);
+}
 
 // ------------------------------------------------------------------ instalar e notificações
 let eventoInstalar = null;
