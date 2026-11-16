@@ -211,6 +211,7 @@ async function telaPedir() {
   const fila = lerJSON(FILA) || [];
   moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
     ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
+    <div class="pedir-grid"><div class="col-form">
     <p class="sec"><span class="num">1</span>O que você precisa?</p>
     <div class="chips" id="p-eq">${S.equipamentos.map(e => `<button class="chip chip-eq ${e.id === F.equipamento_id ? 'on' : ''}" data-eq="${e.id}">${e.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(e.nome)}<small>${e.exclusivo ? 'um uso por vez' : `até ${e.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
     <div id="p-qtd"></div>
@@ -220,7 +221,10 @@ async function telaPedir() {
       <label class="campo" style="margin:0"><span>Início</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
       <label class="campo" style="margin:0"><span>Fim</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label>
     </div>
+    </div>
+    <div class="col-agenda"><p class="sec"><span class="num">·</span>Agenda do dia</p>
     <div class="card" id="p-ocupacao"><p class="sub">Carregando a agenda do dia…</p></div>
+    </div></div>
     <p class="sec"><span class="num">3</span>Para onde e o quê?</p>
     <label class="campo"><span>Setor que está pedindo</span><select id="p-setor"><option value="">Escolha</option>${S.eu.setores.map(s => `<option ${s === F.setor ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
     <div class="dupla">
