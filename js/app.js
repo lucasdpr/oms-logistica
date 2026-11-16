@@ -25,6 +25,7 @@ function quando(p) {
   return `${rot}, ${p.inicio.slice(11, 16)} às ${df !== di ? dataBR(df) + ' ' : ''}${p.fim.slice(11, 16)}`;
 }
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2800); }
+const nomeBonito = n => (n || '').toLowerCase().replace(/(^|\s)(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/\b(Da|De|Do|Das|Dos)\b/g, x => x.toLowerCase());
 const primeiroNome = n => (n || '').split(' ')[0].toLowerCase().replace(/^./, c => c.toUpperCase());
 
 async function api(caminho, opcoes = {}) {
@@ -307,9 +308,11 @@ function trilho(lista, dia, sel) {
     <div class="horas"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>`;
 }
 function linhaReserva(p) {
+  const quem = p.meu ? 'Você' : nomeBonito(p.solicitante_nome) || p.solicitante;
   return `<div class="reserva"><span class="hora">${p.inicio.slice(11, 16)}–${p.fim.slice(11, 16)}</span>
-    <span class="det"><b>${esc(p.setor || '—')}</b> · ${esc(p.origem)} → ${esc(p.destino)}${p.quantidade > 1 ? ` · ${p.quantidade} un.` : ''}<br>
-    ${p.status === 'pendente' ? '<span style="color:var(--alerta)">aguardando a logística</span>' : 'aprovado'}${p.urgente ? ' · 🚨 emergência' : ''}${p.meu ? ' · seu pedido' : ` · ${esc(primeiroNome(p.solicitante_nome))}`}</span></div>`;
+    <span class="det"><b>${esc(quem)}</b>${p.setor ? ` · ${esc(p.setor)}` : ''}<br>
+    ${esc(p.origem)} → ${esc(p.destino)}${p.quantidade > 1 ? ` · ${p.quantidade} un.` : ''}<br>
+    ${p.status === 'pendente' ? '<span style="color:var(--alerta)">aguardando a logística</span>' : '<span style="color:var(--ok)">aprovado</span>'}${p.urgente ? ' · 🚨 emergência' : ''}</span></div>`;
 }
 async function enviarFila() {
   const fila = lerJSON(FILA) || []; if (!fila.length) return;
@@ -350,13 +353,14 @@ function cartaoPedido(p, admin) {
   const ativo = ['pendente', 'aprovado'].includes(p.status) && p.fim >= `${hoje()} 00:00`;
   return `<div class="card ped st-${p.status} ${p.urgente && p.status === 'pendente' ? 'urg' : ''}">
     <div class="ped-top"><h3>${p.urgente ? '🚨 ' : ''}${esc(p.equipamento)}${p.quantidade > 1 ? ` <span class="sub">× ${p.quantidade}</span>` : ''}</h3><span class="selo ${p.status}">${rot}</span></div>
+    ${admin ? `<p class="ped-quem">${esc(nomeBonito(p.solicitante_nome) || p.solicitante)}${p.setor ? ` <span>· ${esc(p.setor)}</span>` : ''}</p>` : ''}
     <p class="ped-quando">${quando(p)}</p>
     <p class="ped-rota"><b>${esc(p.origem)}</b> → <b>${esc(p.destino)}</b> · ${esc(p.carga)}</p>
-    ${admin ? `<p class="ped-rota">${esc(p.solicitante_nome || p.solicitante)}${p.setor ? ' · ' + esc(p.setor) : ''}${p.solicitante_telefone ? ` · <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a>` : ''}</p>` : ''}
+    ${admin && p.solicitante_telefone ? `<p class="ped-rota">📞 <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a> · matrícula ${esc(p.solicitante)}</p>` : admin ? `<p class="ped-rota">matrícula ${esc(p.solicitante)}</p>` : ''}
     ${p.observacao ? `<p class="mini">“${esc(p.observacao)}”</p>` : ''}
     ${p.reagendado && p.status === 'aprovado' ? `<div class="aviso sug">A logística remarcou: você pediu ${dataBR(p.sugestao_inicio)}.${p.motivo ? ' ' + esc(p.motivo) : ''}</div>` : ''}
     ${p.status === 'recusado' && p.motivo ? `<div class="aviso conf">Motivo: ${esc(p.motivo)}</div>` : ''}
-    ${admin && p.conflitos?.length ? `<div class="aviso conf">Choca com: ${p.conflitos.map(c => `${esc(c.nome || '')} ${c.inicio.slice(11)}–${c.fim.slice(11)} (${c.status === 'aprovado' ? 'aprovado' : 'aguardando'})`).join('; ')}</div>` : ''}
+    ${admin && p.conflitos?.length ? `<div class="aviso conf">Choca com: ${p.conflitos.map(c => `${esc(nomeBonito(c.nome) || '')} ${c.inicio.slice(11)}–${c.fim.slice(11)} (${c.status === 'aprovado' ? 'aprovado' : 'aguardando'})`).join('; ')}</div>` : ''}
     ${admin && ['pendente', 'sugerido'].includes(p.status) ? `<div class="btns"><button class="btn ok" data-ap="${p.id}">Aprovar</button><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-rc="${p.id}">Recusar</button></div>` : ''}
     ${admin && p.status === 'aprovado' ? `<div class="btns"><button class="btn" data-rm="${p.id}">Remarcar</button><button class="btn perigo" data-cn="${p.id}">Cancelar</button></div>` : ''}
     ${!admin && ativo ? `<div class="btns"><button class="btn perigo" data-cn="${p.id}">Cancelar pedido</button></div>` : ''}
