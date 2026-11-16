@@ -85,15 +85,15 @@ function ir(tela) { if (location.hash !== '#' + tela) location.hash = tela; else
 window.addEventListener('hashchange', () => desenhar());
 
 async function desenhar() {
-  let tela = (location.hash || '').slice(1) || (S.sessao ? 'pedir' : 'login');
+  let tela = (location.hash || '').slice(1) || (S.sessao ? (S.eu?.admin ? 'painel' : 'pedir') : 'login');
   if (!S.sessao && !['login', 'cadastro'].includes(tela)) tela = 'login';
-  if (S.sessao && ['login', 'cadastro'].includes(tela)) tela = 'pedir';
-  if (S.sessao && !TELAS_LOGADO.includes(tela)) tela = 'pedir';
+  if (S.sessao && ['login', 'cadastro'].includes(tela)) tela = S.eu?.admin ? 'painel' : 'pedir';
   if (S.sessao && !S.eu) {
     $('#app').innerHTML = '<div class="carregando"><div class="spin"></div></div>';
     try { await carregarEu(); } catch (e) { if (!S.sessao) return; $('#app').innerHTML = `<div class="login"><p class="tit">Não deu para carregar</p><p class="sub">${esc(e.message)}</p><button class="btn pri largo" onclick="location.reload()">Tentar de novo</button></div>`; return; }
     ativarPush();
   }
+  if (S.sessao && !TELAS_LOGADO.includes(tela)) tela = S.eu?.admin ? 'painel' : 'pedir';
   if (['painel', 'cadastros', 'config'].includes(tela) && !S.eu?.admin) tela = 'pedir';
   S.tela = tela;
   const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig }[tela];
@@ -109,8 +109,8 @@ function moldura(titulo, sub, corpo) {
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${corpo}</main>
   <nav class="nav"><div class="nav-in">
-    ${item('pedir', 'Pedir', 'pedir')}${item('agenda', 'Agenda', 'agenda')}${item('meus', a ? 'Meus' : 'Meus pedidos', 'meus')}
-    ${a ? item('painel', 'Logística', 'painel', n || '') + item('config', 'Ajustes', 'config', c || '') : ''}
+    ${a ? item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Agenda', 'agenda') + item('pedir', 'Novo pedido', 'pedir') + item('config', 'Ajustes', 'config', c || '')
+        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Agenda', 'agenda') + item('meus', 'Meus pedidos', 'meus')}
   </div></nav>`;
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
 }
@@ -154,7 +154,7 @@ function telaLogin() {
     try {
       const r = await entrar(mat, senha);
       if (r.definirSenha) return pedirNovaSenha(mat, senha, r.nome);
-      S.eu = null; ir('pedir');
+      S.eu = null; ir('inicio');
     } catch (err) { er.textContent = err.message; er.hidden = false; } finally { bt.disabled = false; }
   };
 }
@@ -210,17 +210,17 @@ async function telaPedir() {
   const fila = lerJSON(FILA) || [];
   moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
     ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
-    <p class="sec">O que você precisa</p>
+    <p class="sec"><span class="num">1</span>O que você precisa?</p>
     <div class="chips" id="p-eq">${S.equipamentos.map(e => `<button class="chip chip-eq ${e.id === F.equipamento_id ? 'on' : ''}" data-eq="${e.id}">${e.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(e.nome)}<small>${e.exclusivo ? 'um uso por vez' : `até ${e.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
     <div id="p-qtd"></div>
-    <p class="sec">Quando</p>
+    <p class="sec"><span class="num">2</span>Qual dia e horário?</p>
     <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
     <div class="dupla" style="margin-top:12px">
       <label class="campo" style="margin:0"><span>Início</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
       <label class="campo" style="margin:0"><span>Fim</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label>
     </div>
     <div class="card" id="p-ocupacao"><p class="sub">Carregando a agenda do dia…</p></div>
-    <p class="sec">Detalhes</p>
+    <p class="sec"><span class="num">3</span>Para onde e o quê?</p>
     <label class="campo"><span>Setor que está pedindo</span><select id="p-setor"><option value="">Escolha</option>${S.eu.setores.map(s => `<option ${s === F.setor ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
     <div class="dupla">
       <label class="campo"><span>Origem</span><input id="p-orig" value="${esc(F.origem || '')}" placeholder="Ex.: Oficina"></label>
@@ -229,9 +229,9 @@ async function telaPedir() {
     <label class="campo"><span>O que vai transportar</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
     <label class="campo"><span>Observação (opcional)</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
     <label class="card" style="display:flex;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" id="p-urg" ${F.urgente ? 'checked' : ''} style="width:24px;min-height:24px;accent-color:var(--erro)">
-      <span><b>É emergência</b><br><span class="sub">A logística recebe o aviso como emergência e vê o pedido primeiro.</span></span></label>
+      <span><b>É emergência?</b><br><span class="sub">Marque só se não puder esperar. A logística vê primeiro.</span></span></label>
     <p class="erro-msg" id="p-erro" hidden></p>
-    <button class="btn pri largo" id="p-enviar">Enviar pedido</button>` : '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
+    <p class="resumo-pedido" id="p-resumo"></p><button class="btn pri largo" id="p-enviar">Enviar pedido</button>` : '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
   if (!S.equipamentos.length) return;
   const salvar = () => Object.assign(F, { inicio: $('#p-ini').value, fim: $('#p-fim').value, setor: $('#p-setor').value, origem: $('#p-orig').value, destino: $('#p-dest').value, carga: $('#p-carga').value, observacao: $('#p-obs').value, urgente: $('#p-urg').checked });
   document.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { salvar(); F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; telaPedir(); });
@@ -260,6 +260,8 @@ async function telaPedir() {
       } else { er.textContent = e.message; er.hidden = false; bt.disabled = false; }
     }
   };
+  const resumir = () => { salvar(); const e = eqSel(); $('#p-resumo').textContent = `${e.nome}${F.quantidade > 1 ? ' × ' + F.quantidade : ''} · ${F.data === amanha() ? 'amanhã' : dataBR(F.data)} ${F.inicio}–${F.fim}${F.origem && F.destino ? ' · ' + F.origem + ' → ' + F.destino : ''}`; };
+  document.querySelectorAll('#app input, #app select, #app textarea').forEach(el => el.addEventListener('input', resumir)); resumir();
   desenharOcupacao();
 }
 function diaSeguinte(iso) { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + 1); return isoDia(d); }
@@ -407,14 +409,25 @@ async function telaMeus() {
 // ------------------------------------------------------------------ painel da logística
 async function telaPainel() {
   const aba = S.dados.abaPainel || 'pendente';
-  moldura('Logística', 'Decida os pedidos', `
+  moldura('Pedidos', 'Aprove, remarque ou recuse', `
+    <div id="pn-resumo"></div>
     <div class="chips"><button class="chip ${aba === 'pendente' ? 'on' : ''}" data-aba="pendente">Para decidir${S.eu.pedidos_pendentes ? ` <small>(${S.eu.pedidos_pendentes})</small>` : ''}</button>
-    <button class="chip ${aba === 'proximos' ? 'on' : ''}" data-aba="proximos">Aprovados próximos</button>
+    <button class="chip ${aba === 'proximos' ? 'on' : ''}" data-aba="proximos">Já aprovados</button>
     <button class="chip ${aba === 'recusado' ? 'on' : ''}" data-aba="recusado">Recusados</button></div>
     <div id="pn-lista"><div class="card"><p class="sub">Carregando…</p></div></div>`);
   document.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { S.dados.abaPainel = b.dataset.aba; telaPainel(); });
   try {
     const lista = await api(`/api/logistica/pedidos?status=${aba}`); S.dados.pedidos = lista;
+    try {
+      const prox = aba === 'proximos' ? lista : await api('/api/logistica/pedidos?status=proximos');
+      const hj = prox.filter(p => p.inicio.slice(0, 10) === hoje()).length, am = prox.filter(p => p.inicio.slice(0, 10) === amanha()).length;
+      const pend = S.eu.pedidos_pendentes || 0;
+      $('#pn-resumo').innerHTML = `<div class="resumo">
+        <button class="res ${pend ? 'alerta' : ''}" data-aba="pendente"><b>${pend}</b><span>para decidir</span></button>
+        <button class="res" data-aba="proximos"><b>${hj}</b><span>hoje</span></button>
+        <button class="res" data-aba="proximos"><b>${am}</b><span>amanhã</span></button></div>`;
+      document.querySelectorAll('#pn-resumo [data-aba]').forEach(b => b.onclick = () => { S.dados.abaPainel = b.dataset.aba; telaPainel(); });
+    } catch { /* resumo é opcional */ }
     $('#pn-lista').innerHTML = lista.length ? lista.map(p => cartaoPedido(p, true)).join('')
       : `<div class="vazio"><b>${aba === 'pendente' ? 'Nada para decidir' : 'Nada aqui'}</b>${aba === 'pendente' ? 'Quando alguém pedir, você recebe um aviso no celular.' : ''}</div>`;
     ligarAcoes(telaPainel);
