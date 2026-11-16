@@ -497,7 +497,29 @@ async function ativarPush() {
 }
 
 // ------------------------------------------------------------------ início
-if ('serviceWorker' in navigator && !LOCAL) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Atualização: quando sai versão nova, aparece um aviso fixo com o botão "Atualizar".
+function avisoAtualizar(reg) {
+  if (document.getElementById('bn-atualizar')) return;
+  const d = document.createElement('div'); d.id = 'bn-atualizar'; d.className = 'atualizar';
+  d.innerHTML = '<span><b>Nova versão disponível</b><small>Toque para atualizar o app</small></span><button class="btn pri" type="button">Atualizar</button>';
+  d.querySelector('button').onclick = () => { d.querySelector('button').disabled = true; (reg.waiting || reg.installing)?.postMessage('ATUALIZAR'); setTimeout(() => location.reload(), 2500); };
+  document.body.appendChild(d);
+}
+if ('serviceWorker' in navigator && !LOCAL) {
+  const tinhaControle = !!navigator.serviceWorker.controller;
+  let recarregando = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (tinhaControle && !recarregando) { recarregando = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    if (reg.waiting && navigator.serviceWorker.controller) avisoAtualizar(reg);
+    reg.addEventListener('updatefound', () => {
+      const n = reg.installing; if (!n) return;
+      n.addEventListener('statechange', () => { if (n.state === 'installed' && navigator.serviceWorker.controller) avisoAtualizar(reg); });
+    });
+    const procurar = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') procurar(); });
+    setInterval(procurar, 30 * 60 * 1000);
+  }).catch(() => {});
+}
 if (S.sessao) renovar();
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && S.sessao && S.eu) {

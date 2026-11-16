@@ -1,14 +1,17 @@
 // Service worker do OMS Logística: guarda o app para abrir rápido (e sem sinal) e recebe as notificações.
 // Ao publicar mudança em qualquer arquivo do app, suba VERSAO.
-const VERSAO = 'log-v4';
+const VERSAO = 'log-v5';
 const ARQUIVOS = [
-  './', './index.html', './css/app.css?v=4', './js/app.js?v=4', './manifest.webmanifest',
+  './', './index.html', './css/app.css?v=5', './js/app.js?v=5', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ARQUIVOS)));
 });
+
+// A nova versão espera o usuário tocar em "Atualizar" no app (mensagem abaixo).
+self.addEventListener('message', e => { if (e.data === 'ATUALIZAR') self.skipWaiting(); });
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSAO).map(k => caches.delete(k)))).then(() => self.clients.claim()));
