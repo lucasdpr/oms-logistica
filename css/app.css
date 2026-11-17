@@ -397,3 +397,6 @@ a.btn.pri { color: var(--marca-esc); }
   .vg-grid { grid-template-columns: 1.3fr 1fr; }
   .vg-grid > .card:first-child { grid-row: span 2; }
 }
+
+.aviso.disputa { background: color-mix(in srgb, var(--alerta) 14%, transparent); }
+.aviso.livre { background: color-mix(in srgb, var(--ok) 13%, transparent); color: var(--ok); font-weight: 700; }

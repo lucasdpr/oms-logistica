@@ -319,11 +319,14 @@ async function desenharOcupacao() {
     const bl = bls.filter(b => b.equipamento_id === e.id);
     if (!$('#p-ocupacao')) return;
     const ini = S.form.inicio, fim = S.form.fim;
-    const choque = e.exclusivo && lista.some(p => p.status === 'aprovado' && p.inicio.slice(11, 16) < (fim > ini ? fim : '24:00') && p.fim.slice(11, 16) > ini && p.inicio.slice(0, 10) === S.form.data);
+    const cruza = p => p.inicio.slice(11, 16) < (fim > ini ? fim : '24:00') && p.fim.slice(11, 16) > ini && p.inicio.slice(0, 10) === S.form.data;
+    const choque = e.exclusivo && lista.some(p => p.status === 'aprovado' && cruza(p));
+    const disputa = e.exclusivo && !choque ? lista.filter(p => p.status === 'pendente' && !p.meu && cruza(p)) : [];
     el.innerHTML = `<div class="eq-cab"><b>${esc(e.nome)} · ${dataBR(S.form.data)}</b><span>${lista.length ? `${lista.length} reserva(s)` : 'livre o dia todo'}</span></div>
       ${trilho(lista, S.form.data, { ini, fim }, bl)}
       ${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > S.form.data ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}
       ${choque ? '<div class="aviso conf">Esse horário já tem reserva aprovada. Escolha outro horário.</div>' : ''}
+      ${disputa.length ? `<div class="aviso disputa">⚠️ ${disputa.map(p => `<b>${esc(nomeBonito(p.solicitante_nome))}</b> já pediu ${p.inicio.slice(11, 16)}–${p.fim.slice(11, 16)}`).join(', ')} e está aguardando a logística. Se puder, escolha outro horário. Se pedir mesmo assim, a logística decide quem fica.</div>` : !choque ? '<div class="aviso livre">✓ Horário livre</div>' : ''}
       ${!e.exclusivo ? '<p class="mini">A carreta é fornecida pela CBSI: pode haver mais de um pedido no mesmo horário. A logística confirma.</p>' : ''}
       ${lista.map(linhaReserva).join('')}`;
   } catch (err) { el.innerHTML = `<p class="sub">${esc(err.message)}</p>`; }
@@ -367,16 +370,16 @@ window.addEventListener('online', () => { if (S.sessao) enviarFila(); });
 async function telaAgenda() {
   const A = S.dados.ag || (S.dados.ag = { modo: 'semana', filtro: 'todos', dia: hoje(), semana: 0 });
   const adm = S.eu.admin;
-  const filtros = [['todos', 'Todos'], ['pendente', 'Para aprovar'], ['aprovado', 'Aprovados']];
+  const filtros = [['todos', 'Todos'], ['pendente', adm ? 'Para aprovar' : 'Aguardando'], ['aprovado', 'Aprovados']];
   const ini = A.modo === 'semana' ? (() => { const d = new Date(); d.setDate(d.getDate() + 7 * A.semana); return isoDia(d); })() : A.dia;
-  moldura('Horários', A.modo === 'semana' ? 'Os próximos 7 dias, aprovados e para aprovar' : 'Um dia, equipamento por equipamento', `
+  moldura('Horários', A.modo === 'semana' ? (adm ? 'Os próximos 7 dias, aprovados e para aprovar' : 'Veja o que está ocupado antes de pedir') : 'Um dia, equipamento por equipamento', `
     <div class="ag-topo">
       <div class="chips"><button class="chip ${A.modo === 'semana' ? 'on' : ''}" data-modo="semana">Semana</button><button class="chip ${A.modo === 'dia' ? 'on' : ''}" data-modo="dia">Dia</button></div>
       <div class="chips">${filtros.map(([v, t]) => `<button class="chip ${A.filtro === v ? 'on' : ''}" data-filtro="${v}">${t}</button>`).join('')}</div>
     </div>
     ${A.modo === 'semana' ? `<div class="sem-nav"><button class="btn" data-sem="-1" ${A.semana <= 0 ? 'disabled' : ''}>‹ Anterior</button><b>${dataBR(ini)} a ${dataBR(isoDia(new Date(new Date(ini + 'T12:00').getTime() + 6 * 864e5)))}</b><button class="btn" data-sem="1">Próxima ›</button></div>`
       : `<div class="chips">${proximosDias(14).map(d => `<button class="chip dia-chip ${d.iso === A.dia ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>`}
-    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>Para aprovar</span><span><i class="b"></i>Bloqueado</span></div>
+    <div class="legenda"><span><i></i>Aprovado</span><span><i class="p"></i>${adm ? 'Para aprovar' : 'Aguardando aprovação'}</span><span><i class="b"></i>Bloqueado</span></div>
     <div id="ag-lista"><div class="card"><p class="sub">Carregando…</p></div></div>`);
   document.querySelectorAll('[data-modo]').forEach(b => b.onclick = () => { A.modo = b.dataset.modo; telaAgenda(); });
   document.querySelectorAll('[data-filtro]').forEach(b => b.onclick = () => { A.filtro = b.dataset.filtro; telaAgenda(); });
@@ -408,7 +411,7 @@ async function telaAgenda() {
             ${bs.map(b => `<div class="sem-it bloqueado"><span class="sem-h">⛔</span><span class="sem-d"><b>${esc(b.equipamento)}</b><small>Bloqueado${b.motivo ? ' · ' + esc(b.motivo) : ''}</small></span></div>`).join('')}
             ${ps.length ? ps.map(p => `<div class="sem-it ${p.status}"><span class="sem-h">${p.inicio.slice(0, 10) < d ? '00:00' : p.inicio.slice(11, 16)}<small>${p.fim.slice(0, 10) > d ? '24:00' : p.fim.slice(11, 16)}</small></span>
               <span class="sem-d"><b>${esc(p.equipamento)}${p.quantidade > 1 ? ' ×' + p.quantidade : ''}${p.urgente ? ' 🚨' : ''}</b><small>${esc(p.meu ? 'Você' : nomeBonito(p.solicitante_nome))}${p.setor ? ' · ' + esc(p.setor) : ''}</small><small>${esc(p.origem)} → ${esc(p.destino)}</small>
-              ${p.status === 'pendente' ? `<em>para aprovar</em>` : ''}${adm && p.status === 'pendente' ? acoesRapidas(p) : ''}</span></div>`).join('')
+              ${p.status === 'pendente' ? `<em>${adm ? 'para aprovar' : 'aguardando aprovação'}</em>` : ''}${adm && p.status === 'pendente' ? acoesRapidas(p) : ''}</span></div>`).join('')
               : `<p class="sem-livre">${A.filtro === 'pendente' ? 'Nada para aprovar' : 'Livre'}</p>`}</div>`;
         }).join('')}</div>`;
       document.querySelectorAll('[data-verdia]').forEach(b => b.onclick = () => { A.modo = 'dia'; A.dia = b.dataset.verdia; telaAgenda(); });
