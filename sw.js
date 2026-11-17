@@ -1,8 +1,8 @@
 // Service worker do OMS Logística: guarda o app para abrir rápido (e sem sinal) e recebe as notificações.
 // Ao publicar mudança em qualquer arquivo do app, suba VERSAO.
-const VERSAO = 'log-v14';
+const VERSAO = 'log-v15';
 const ARQUIVOS = [
-  './', './index.html', './css/app.css?v=14', './js/app.js?v=14', './manifest.webmanifest',
+  './', './index.html', './css/app.css?v=15', './js/app.js?v=15', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
 ];
 
@@ -33,7 +33,7 @@ self.addEventListener('push', e => {
   const titulo = d.title || d.titulo || 'OMS Logística';
   e.waitUntil(self.registration.showNotification(titulo, {
     body: d.body || d.corpo || '', icon: 'icons/icon-192.png', badge: 'icons/icon-192.png',
-    data: { url: d.url || './' }, tag: d.tag, renotify: !!d.tag,
+    data: { url: d.url || './' }, tag: d.tag, renotify: !!d.tag, vibrate: [200, 100, 200], requireInteraction: /sugeriu|Pode outro/i.test(titulo + (d.corpo || '')),
   }));
 });
 

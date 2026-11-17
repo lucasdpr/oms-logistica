@@ -110,11 +110,16 @@ function moldura(titulo, sub, corpo) {
   $('#app').innerHTML = `
   <header class="topo"><img src="icons/icon-192.png" alt=""><div class="topo-tit"><b>${esc(titulo)}</b><span>${esc(sub)}</span></div>
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
-  <main class="conteudo">${corpo}</main>
+  <main class="conteudo">${S.eu?.para_responder && S.tela !== 'meus' ? `<a class="aviso-resp" href="#meus">🔔 A logística sugeriu outro horário para ${S.eu.para_responder > 1 ? S.eu.para_responder + ' pedidos seus' : 'um pedido seu'}. <b>Toque para responder</b></a>` : ''}
+    ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo quando a logística responder. <b>Ligar</b></button>` : ''}${corpo}</main>
   <nav class="nav"><div class="nav-in">
     ${a ? item('inicio', 'Início', 'inicio') + item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('config', 'Ajustes', 'config', c || '')
-        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus') + item('historico', 'Histórico', 'historico')}
+        : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus', S.eu?.para_responder || '') + item('historico', 'Histórico', 'historico')}
   </div></nav>`;
+  const bn = $('#bt-notif'); if (bn) bn.onclick = async () => {
+    if (Notification.permission === 'denied') return folha('<h2>Notificações bloqueadas</h2><p class="sub">O celular está bloqueando os avisos deste app. Abra as configurações do navegador (ou do app instalado), procure Notificações e permita para o OMS Logística. Depois volte aqui.</p><button class="btn pri largo" data-x>Entendi</button>', (f, x) => { f.querySelector('[data-x]').onclick = x; });
+    await ativarPush(); desenhar();
+  };
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
 }
 
@@ -533,19 +538,16 @@ function ligarAcoes(recarregar) {
     b.onclick = () => {
       const p = (S.dados.pedidos || []).find(x => String(x.id) === b.dataset.rm) || {};
       const d = (p.inicio || '').slice(0, 10) || amanha();
-      folha(`<h2>Mudar horário</h2><p class="sub">Escolha o novo dia e horário. Você pode só sugerir (a pessoa confirma) ou já mudar e aprovar.</p>
+      folha(`<h2>Mudar horário</h2><p class="sub">Escolha o novo dia e horário. A pessoa confirma se dá ou não.</p>
         <label class="campo"><span>Dia</span><input type="date" id="rm-d" value="${d}"></label>
         <div class="dupla"><label class="campo"><span>Início</span><input type="time" id="rm-i" value="${(p.inicio || '').slice(11, 16) || '07:30'}"></label><label class="campo"><span>Fim</span><input type="time" id="rm-f" value="${(p.fim || '').slice(11, 16) || '09:30'}"></label></div>
         <label class="campo"><span>Recado para a pessoa (opcional)</span><input id="rm-m" placeholder="Ex.: CBSI só tem carreta à tarde"></label>
         <button class="btn pri largo" data-sug>Enviar para ${esc(primeiroNome(p.solicitante_nome) || 'a pessoa')} confirmar</button>
-        <p class="mini" style="text-align:center">Ela recebe um aviso e responde "Aceito" ou "Não posso".</p>
-        <button class="btn largo" data-ok style="margin-top:8px">Mudar e já aprovar</button>
-        <p class="mini" style="text-align:center">Fica aprovado no novo horário e ela só é avisada.</p>
+        <p class="mini" style="text-align:center">Ela recebe uma notificação e responde "Aceito" ou "Não posso". Só fica aprovado quando ela aceitar.</p>
         <button class="btn largo" data-x style="margin-top:8px">Voltar</button>`, (f, fechar) => {
         f.querySelector('[data-x]').onclick = fechar;
         const corpo = tipo => { const dia = f.querySelector('#rm-d').value, i = f.querySelector('#rm-i').value, fi = f.querySelector('#rm-f').value;
           return { acao: tipo, inicio: `${dia} ${i}`, fim: `${fi <= i ? diaSeguinte(dia) : dia} ${fi}`, motivo: f.querySelector('#rm-m').value }; };
-        f.querySelector('[data-ok]').onclick = () => { const c = corpo('remarcar'); fechar(); acao(b.dataset.rm, c, 'Horário mudado e aprovado. Quem pediu foi avisado.'); };
         f.querySelector('[data-sug]').onclick = () => { const c = corpo('sugerir'); fechar(); acao(b.dataset.rm, c, 'Sugestão enviada. Você é avisado quando a pessoa responder.'); };
       });
     };

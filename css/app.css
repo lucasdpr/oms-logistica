@@ -417,3 +417,9 @@ a.btn.pri { color: var(--marca-esc); }
 details.mais { margin-top: 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--linha); padding: 4px 14px 12px; }
 details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; color: var(--texto-2); min-height: 40px; }
 @media (min-width: 900px) { .atalhos { grid-template-columns: repeat(2, 1fr); } }
+
+.aviso-resp, .aviso-notif { display: block; width: 100%; text-align: left; margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; text-decoration: none; color: var(--texto); font-size: 14px; cursor: pointer; }
+.aviso-resp { background: color-mix(in srgb, var(--info) 16%, var(--card)); border: 1px solid color-mix(in srgb, var(--info) 55%, transparent); animation: pulsa 2s ease-in-out infinite; }
+.aviso-notif { background: color-mix(in srgb, var(--alerta) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--alerta) 45%, transparent); font: inherit; font-size: 14px; }
+.aviso-resp b, .aviso-notif b { color: var(--marca); }
+@keyframes pulsa { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--info) 25%, transparent); } }
