@@ -207,74 +207,135 @@ function telaCadastro() {
 // ------------------------------------------------------------------ pedir
 function eqSel() { return S.equipamentos.find(e => e.id === S.form.equipamento_id) || null; }
 
+const LUGARES_PADRAO = ['Oficina OMS', 'OMR', 'Máquina', 'Aciaria', 'Pátio de sucata', 'MCC 3', 'MCC 4'];
+const PREF = 'oms_logistica_pref_v1';
+function rotasDe(pedidos) {
+  const vistas = new Map();
+  for (const p of pedidos) {
+    const k = `${p.equipamento_id}|${p.origem}|${p.destino}|${p.carga}`;
+    if (!vistas.has(k)) vistas.set(k, { equipamento_id: p.equipamento_id, equipamento: p.equipamento, origem: p.origem, destino: p.destino, carga: p.carga, setor: p.setor, quantidade: p.quantidade || 1, n: 0 });
+    vistas.get(k).n++;
+  }
+  return [...vistas.values()].sort((a, b) => b.n - a.n).slice(0, 4);
+}
+function lugares(extra) {
+  const cont = {};
+  (S.dados.rotas || []).forEach(r => { cont[r.origem] = (cont[r.origem] || 0) + r.n; cont[r.destino] = (cont[r.destino] || 0) + r.n; });
+  const usados = Object.keys(cont).sort((a, b) => cont[b] - cont[a]);
+  const l = [...new Set([...usados, ...LUGARES_PADRAO])].slice(0, 9);
+  if (extra && !l.includes(extra)) l.unshift(extra);
+  return l;
+}
+const somaHora = (hhmm, h) => { const m = minutos(hhmm) + h * 60; return m >= 1440 ? '23:59' : `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+
 async function telaPedir() {
   const F = S.form;
-  if (!F.equipamento_id && S.equipamentos[0]) Object.assign(F, { equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:30', fim: '09:30', quantidade: 1, setor: S.eu.setor && S.eu.setores.includes(S.eu.setor) ? S.eu.setor : '', urgente: false });
+  const pref = lerJSON(PREF) || {};
+  if (!F.equipamento_id && S.equipamentos[0]) Object.assign(F, { equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:00', dur: 2, quantidade: 1,
+    setor: pref.setor || (S.eu.setores.includes(S.eu.setor) ? S.eu.setor : ''), urgente: false });
+  if (!F.dur && !F.custom) F.dur = 2;
+  if (!F.custom) F.fim = somaHora(F.inicio, F.dur);
+  if (!S.dados.rotas) { try { S.dados.rotas = rotasDe(await api('/api/logistica/pedidos/meus')); } catch { S.dados.rotas = []; } }
+  const e = eqSel();
+  let ag = [];
+  try { if (e) ag = await api(`/api/logistica/agenda?inicio=${F.data}&dias=1&equipamento_id=${e.id}`); } catch { /* sem sinal */ }
+  const ocupado = (ini, fim, st) => ag.some(p => p.status === st && p.inicio.slice(0, 10) === F.data && p.inicio.slice(11, 16) < fim && p.fim.slice(11, 16) > ini);
+  const horas = Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`);
   const fila = lerJSON(FILA) || [];
+  const rotas = S.dados.rotas || [];
+  const chipLugar = (campo, valor) => `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
+    <button class="chip ${F[campo + 'Outro'] ? 'on' : ''}" data-${campo}-outro>Outro…</button></div>
+    ${F[campo + 'Outro'] ? `<input id="p-${campo}" value="${esc(valor || '')}" placeholder="Escreva o local" style="margin-top:8px">` : ''}`;
   moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
     ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
+    ${rotas.length ? `<p class="sec">⚡ Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div>` : ''}
     <div class="pedir-grid"><div class="col-form">
     <p class="sec"><span class="num">1</span>O que você precisa?</p>
-    <div class="chips" id="p-eq">${S.equipamentos.map(e => `<button class="chip chip-eq ${e.id === F.equipamento_id ? 'on' : ''}" data-eq="${e.id}">${e.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(e.nome)}<small>${e.exclusivo ? 'um uso por vez' : `até ${e.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
-    <div id="p-qtd"></div>
-    <p class="sec"><span class="num">2</span>Qual dia e horário?</p>
+    <div class="chips" id="p-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${x.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(x.nome)}<small>${x.exclusivo ? 'um uso por vez' : `até ${x.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
+    ${e && e.max_qtd > 1 ? `<div class="chips" style="margin-top:10px">${Array.from({ length: e.max_qtd }, (_, k) => k + 1).map(q => `<button class="chip ${q === F.quantidade ? 'on' : ''}" data-q="${q}">${q} ${q > 1 ? 'unidades' : 'unidade'}</button>`).join('')}</div>` : ''}
+    <p class="sec"><span class="num">2</span>Quando?</p>
     <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
-    <div class="dupla" style="margin-top:12px">
-      <label class="campo" style="margin:0"><span>Início</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
-      <label class="campo" style="margin:0"><span>Fim</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label>
-    </div>
+    ${F.custom ? `<div class="dupla" style="margin-top:12px">
+        <label class="campo" style="margin:0"><span>Início</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
+        <label class="campo" style="margin:0"><span>Fim</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label></div>
+      <button class="link" data-modo-hora="botoes">← Escolher por botões</button>`
+    : `<p class="rot">A partir de que horas?</p>
+      <div class="horas-grid">${horas.map(h => { const fimH = somaHora(h, F.dur); const apr = e?.exclusivo && ocupado(h, fimH, 'aprovado'); const pen = e?.exclusivo && !apr && ocupado(h, fimH, 'pendente');
+        return `<button class="hora ${h === F.inicio ? 'on' : ''} ${apr ? 'ocupada' : ''} ${pen ? 'disputada' : ''}" data-hora="${h}" ${apr ? 'disabled' : ''} title="${apr ? 'Ocupado' : pen ? 'Alguém já pediu' : 'Livre'}">${h.slice(0, 2)}h</button>`; }).join('')}</div>
+      <p class="rot">Por quanto tempo?</p>
+      <div class="chips">${[1, 2, 3, 4].map(d => `<button class="chip ${d === F.dur ? 'on' : ''}" data-dur="${d}">${d}h</button>`).join('')}<button class="chip" data-modo-hora="livre">Outro horário</button></div>
+      ${e?.exclusivo ? '<p class="mini">Apagado = já reservado. Com ponto laranja = alguém já pediu e está aguardando.</p>' : ''}`}
     </div>
     <div class="col-agenda"><p class="sec"><span class="num">·</span>Agenda do dia</p>
     <div class="card" id="p-ocupacao"><p class="sub">Carregando a agenda do dia…</p></div>
     </div></div>
-    <p class="sec"><span class="num">3</span>Para onde e o quê?</p>
-    <label class="campo"><span>Setor que está pedindo</span><select id="p-setor"><option value="">Escolha</option>${S.eu.setores.map(s => `<option ${s === F.setor ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></label>
-    <div class="dupla">
-      <label class="campo"><span>Origem</span><input id="p-orig" value="${esc(F.origem || '')}" placeholder="Ex.: Oficina"></label>
-      <label class="campo"><span>Destino</span><input id="p-dest" value="${esc(F.destino || '')}" placeholder="Ex.: MCC 4"></label>
-    </div>
-    <label class="campo"><span>Peça do OMS (opcional)</span>
-      <div class="busca-peca">${F.equip_oms_id ? `<div class="peca-sel"><b>🔧 ${esc(F.equip_oms_id)}</b><span>${esc(F.equip_oms_desc || '')}</span><button type="button" class="link" id="p-peca-x">Trocar</button></div>`
-        : `<input id="p-peca" placeholder="Digite o código: M-02, S-14…" autocomplete="off"><div id="p-peca-res" class="peca-res"></div>`}</div></label>
-    <label class="campo"><span>O que vai transportar</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
-    <label class="campo"><span>Repetir</span><select id="p-rep">${[[0, 'Só esta vez'], [1, 'Toda semana, por 2 semanas'], [3, 'Toda semana, por 4 semanas'], [7, 'Toda semana, por 8 semanas'], [11, 'Toda semana, por 12 semanas']].map(([v, t]) => `<option value="${v}" ${Number(F.repetir || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-    <label class="campo"><span>Observação (opcional)</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
-    <label class="card" style="display:flex;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" id="p-urg" ${F.urgente ? 'checked' : ''} style="width:24px;min-height:24px;accent-color:var(--erro)">
-      <span><b>É emergência?</b><br><span class="sub">Marque só se não puder esperar. A logística vê primeiro.</span></span></label>
+    <p class="sec"><span class="num">3</span>De onde, para onde?</p>
+    <p class="rot">Setor</p>
+    <div class="chips chips-wrap">${S.eu.setores.map(x => `<button class="chip ${x === F.setor ? 'on' : ''}" data-setor="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+    <p class="rot">Sai de</p>${chipLugar('origem', F.origem)}
+    <p class="rot">Vai para</p>${chipLugar('destino', F.destino)}
+    <label class="campo"><span>O que vai levar?</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
+    <button class="chip chip-urg ${F.urgente ? 'on' : ''}" id="p-urg" style="margin-top:14px">🚨 É emergência</button>
+    <details class="mais" ${F.equip_oms_id || F.observacao || F.repetir ? 'open' : ''}><summary>Mais opções (peça do OMS, repetir, observação)</summary>
+      <label class="campo"><span>Peça do OMS</span>
+        <div class="busca-peca">${F.equip_oms_id ? `<div class="peca-sel"><b>🔧 ${esc(F.equip_oms_id)}</b><span>${esc(F.equip_oms_desc || '')}</span><button type="button" class="link" id="p-peca-x">Trocar</button></div>`
+          : `<input id="p-peca" placeholder="Digite o código: M-02, S-14…" autocomplete="off"><div id="p-peca-res" class="peca-res"></div>`}</div></label>
+      <label class="campo"><span>Repetir</span><select id="p-rep">${[[0, 'Só esta vez'], [1, 'Toda semana, por 2 semanas'], [3, 'Toda semana, por 4 semanas'], [7, 'Toda semana, por 8 semanas'], [11, 'Toda semana, por 12 semanas']].map(([v, t]) => `<option value="${v}" ${Number(F.repetir || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="campo"><span>Observação</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
+    </details>
     <p class="erro-msg" id="p-erro" hidden></p>
     <p class="resumo-pedido" id="p-resumo"></p><button class="btn pri largo" id="p-enviar">Enviar pedido</button>` : '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
   if (!S.equipamentos.length) return;
-  const salvar = () => Object.assign(F, { inicio: $('#p-ini').value, fim: $('#p-fim').value, setor: $('#p-setor').value, origem: $('#p-orig').value, destino: $('#p-dest').value, carga: $('#p-carga').value, observacao: $('#p-obs').value, urgente: $('#p-urg').checked, repetir: Number($('#p-rep').value) || 0 });
-  document.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { salvar(); F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; telaPedir(); });
-  document.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => { salvar(); F.data = b.dataset.dia; telaPedir(); });
-  ['#p-ini', '#p-fim'].forEach(s => $(s).addEventListener('change', () => { salvar(); desenharOcupacao(); }));
-  desenharQtd();
+  const salvar = () => {
+    if ($('#p-ini')) { F.inicio = $('#p-ini').value; F.fim = $('#p-fim').value; }
+    if ($('#p-origem')) F.origem = $('#p-origem').value;
+    if ($('#p-destino')) F.destino = $('#p-destino').value;
+    Object.assign(F, { carga: $('#p-carga').value, observacao: $('#p-obs').value, repetir: Number($('#p-rep').value) || 0 });
+  };
+  const re = () => { salvar(); telaPedir(); };
+  const on = (sel, fn) => document.querySelectorAll(sel).forEach(b => b.onclick = () => { salvar(); fn(b); telaPedir(); });
+  on('[data-eq]', b => { F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; });
+  on('[data-q]', b => { F.quantidade = Number(b.dataset.q); });
+  on('[data-dia]', b => { F.data = b.dataset.dia; });
+  on('[data-hora]', b => { F.inicio = b.dataset.hora; });
+  on('[data-dur]', b => { F.dur = Number(b.dataset.dur); });
+  on('[data-modo-hora]', b => { F.custom = b.dataset.modoHora === 'livre'; if (!F.custom) F.dur = F.dur || 2; });
+  on('[data-setor]', b => { F.setor = b.dataset.setor; gravarJSON(PREF, { ...pref, setor: F.setor }); });
+  on('[data-origem]', b => { F.origem = b.dataset.origem; F.origemOutro = false; });
+  on('[data-destino]', b => { F.destino = b.dataset.destino; F.destinoOutro = false; });
+  on('[data-origem-outro]', () => { F.origemOutro = true; if (LUGARES_PADRAO.includes(F.origem)) F.origem = ''; });
+  on('[data-destino-outro]', () => { F.destinoOutro = true; if (LUGARES_PADRAO.includes(F.destino)) F.destino = ''; });
+  on('#p-urg', () => { F.urgente = !F.urgente; });
+  on('[data-rota]', b => { const r = rotas[Number(b.dataset.rota)]; Object.assign(F, { equipamento_id: r.equipamento_id, origem: r.origem, destino: r.destino, carga: r.carga, quantidade: r.quantidade, setor: r.setor || F.setor, origemOutro: false, destinoOutro: false }); toast('Preenchido. Escolha o dia e o horário.'); });
+  ['#p-ini', '#p-fim'].forEach(x => $(x) && $(x).addEventListener('change', () => { salvar(); desenharOcupacao(); resumir(); }));
   ligarBuscaPeca(salvar);
   $('#p-fila') && ($('#p-fila').onclick = enviarFila);
   $('#p-enviar').onclick = async () => {
     salvar();
     const er = $('#p-erro'); er.hidden = true;
-    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: F.origem, destino: F.destino, carga: F.carga, observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
-    if (!F.setor) { er.textContent = 'Escolha o setor.'; er.hidden = false; return; }
-    if (!F.origem.trim() || !F.destino.trim() || !F.carga.trim()) { er.textContent = 'Preencha origem, destino e o que vai transportar.'; er.hidden = false; return; }
+    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: (F.origem || '').trim(), destino: (F.destino || '').trim(), carga: (F.carga || '').trim(), observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
+    const falta = [!F.setor && 'o setor', !corpo.origem && 'de onde sai', !corpo.destino && 'para onde vai', !corpo.carga && 'o que vai levar'].filter(Boolean);
+    if (falta.length) { er.textContent = 'Falta escolher: ' + falta.join(', ') + '.'; er.hidden = false; er.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
     const bt = $('#p-enviar'); bt.disabled = true;
     try {
       const r = await api('/api/logistica/pedidos', { method: 'POST', body: corpo });
-      S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, fim: F.fim, quantidade: 1, setor: F.setor, urgente: false };
+      S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor, urgente: false };
+      S.dados.rotas = null;
       toast(r.criados > 1 ? `${r.criados} pedidos enviados (um por semana)${r.pulados?.length ? `. Ocupado em ${r.pulados.join(', ')}: esses não entraram` : ''}.`
         : r.disputa ? 'Pedido enviado. Outra pessoa também pediu esse horário: a logística decide.' : 'Pedido enviado para a logística.');
       ir('meus');
-    } catch (e) {
-      if (e.rede) {
-        const fila = lerJSON(FILA) || []; fila.push(corpo); gravarJSON(FILA, fila);
+    } catch (err) {
+      if (err.rede) {
+        const fl = lerJSON(FILA) || []; fl.push(corpo); gravarJSON(FILA, fl);
         toast('Sem sinal: o pedido fica guardado e é enviado quando a conexão voltar.');
-        S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, fim: F.fim, quantidade: 1, setor: F.setor };
+        S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor };
         telaPedir();
-      } else { er.textContent = e.message; er.hidden = false; bt.disabled = false; }
+      } else { er.textContent = err.message; er.hidden = false; bt.disabled = false; }
     }
   };
-  const resumir = () => { salvar(); const e = eqSel(); $('#p-resumo').textContent = `${e.nome}${F.quantidade > 1 ? ' × ' + F.quantidade : ''} · ${F.data === amanha() ? 'amanhã' : dataBR(F.data)} ${F.inicio}–${F.fim}${F.origem && F.destino ? ' · ' + F.origem + ' → ' + F.destino : ''}`; };
+  const resumir = () => { salvar(); const q = eqSel(); $('#p-resumo').textContent = `${q.nome}${F.quantidade > 1 ? ' × ' + F.quantidade : ''} · ${F.data === amanha() ? 'amanhã' : F.data === hoje() ? 'hoje' : dataBR(F.data)} ${F.inicio}–${F.fim}${F.origem && F.destino ? ' · ' + F.origem + ' → ' + F.destino : ''}${F.urgente ? ' · 🚨' : ''}`; };
   document.querySelectorAll('#app input, #app select, #app textarea').forEach(el => el.addEventListener('input', resumir)); resumir();
+  void re;
   desenharOcupacao();
 }
 function ligarBuscaPeca(salvar) {
