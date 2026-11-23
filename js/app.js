@@ -248,7 +248,7 @@ async function telaPedir() {
   const horas = Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`);
   const fila = lerJSON(FILA) || [];
   const rotas = S.dados.rotas || [];
-  const chipLugar = (campo, valor) => `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
+  const chipLugar = (campo, valor) => valor && !F[campo + 'Outro'] && !F[campo + 'Trocar'] ? `<p class="setor-fixo"><b>${esc(valor)}</b> <button class="link" data-${campo}-trocar>trocar</button></p>` : `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
     <button class="chip ${F[campo + 'Outro'] ? 'on' : ''}" data-${campo}-outro>Outro…</button></div>
     ${F[campo + 'Outro'] ? `<input id="p-${campo}" value="${esc(valor || '')}" placeholder="Escreva o local" style="margin-top:8px">` : ''}`;
   moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
@@ -271,12 +271,13 @@ async function telaPedir() {
       <div class="chips">${[1, 2, 3, 4].map(d => `<button class="chip ${d === F.dur ? 'on' : ''}" data-dur="${d}">${d}h</button>`).join('')}<button class="chip" data-modo-hora="livre">Outro horário</button></div>
       ${e?.exclusivo ? '<p class="mini">Apagado = já reservado. Com ponto laranja = alguém já pediu e está aguardando.</p>' : ''}`}
     </div>
-    <div class="col-agenda"><p class="sec"><span class="num">·</span>Agenda do dia</p>
-    <div class="card" id="p-ocupacao"><p class="sub">Carregando a agenda do dia…</p></div>
+    <div class="col-agenda">
+    <div class="card" id="p-ocupacao"><p class="sub">Conferindo o horário…</p></div>
     </div></div>
     <p class="sec"><span class="num">3</span>De onde, para onde?</p>
     <p class="rot">Setor</p>
-    <div class="chips chips-wrap">${S.eu.setores.map(x => `<button class="chip ${x === F.setor ? 'on' : ''}" data-setor="${esc(x)}">${esc(x)}</button>`).join('')}</div>
+    ${F.setor && !F.trocarSetor ? `<p class="setor-fixo"><b>${esc(F.setor)}</b> <button class="link" id="p-setor-trocar">trocar</button></p>`
+      : `<div class="chips chips-wrap">${S.eu.setores.map(x => `<button class="chip ${x === F.setor ? 'on' : ''}" data-setor="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
     <p class="rot">Sai de</p>${chipLugar('origem', F.origem)}
     <p class="rot">Vai para</p>${chipLugar('destino', F.destino)}
     <label class="campo"><span>O que vai levar?</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
@@ -305,9 +306,12 @@ async function telaPedir() {
   on('[data-hora]', b => { F.inicio = b.dataset.hora; });
   on('[data-dur]', b => { F.dur = Number(b.dataset.dur); });
   on('[data-modo-hora]', b => { F.custom = b.dataset.modoHora === 'livre'; if (!F.custom) F.dur = F.dur || 2; });
-  on('[data-setor]', b => { F.setor = b.dataset.setor; gravarJSON(PREF, { ...pref, setor: F.setor }); });
-  on('[data-origem]', b => { F.origem = b.dataset.origem; F.origemOutro = false; });
-  on('[data-destino]', b => { F.destino = b.dataset.destino; F.destinoOutro = false; });
+  on('[data-setor]', b => { F.setor = b.dataset.setor; F.trocarSetor = false; gravarJSON(PREF, { ...pref, setor: F.setor }); });
+  on('#p-setor-trocar', () => { F.trocarSetor = true; });
+  on('[data-origem]', b => { F.origem = b.dataset.origem; F.origemOutro = false; F.origemTrocar = false; });
+  on('[data-destino]', b => { F.destino = b.dataset.destino; F.destinoOutro = false; F.destinoTrocar = false; });
+  on('[data-origem-trocar]', () => { F.origemTrocar = true; });
+  on('[data-destino-trocar]', () => { F.destinoTrocar = true; });
   on('[data-origem-outro]', () => { F.origemOutro = true; if (LUGARES_PADRAO.includes(F.origem)) F.origem = ''; });
   on('[data-destino-outro]', () => { F.destinoOutro = true; if (LUGARES_PADRAO.includes(F.destino)) F.destino = ''; });
   on('#p-urg', () => { F.urgente = !F.urgente; });
@@ -388,13 +392,14 @@ async function desenharOcupacao() {
     const cruza = p => p.inicio.slice(11, 16) < (fim > ini ? fim : '24:00') && p.fim.slice(11, 16) > ini && p.inicio.slice(0, 10) === S.form.data;
     const choque = e.exclusivo && lista.some(p => p.status === 'aprovado' && cruza(p));
     const disputa = e.exclusivo && !choque ? lista.filter(p => p.status === 'pendente' && !p.meu && cruza(p)) : [];
-    el.innerHTML = `<div class="eq-cab"><b>${esc(e.nome)} · ${dataBR(S.form.data)}</b><span>${lista.length ? `${lista.length} reserva(s)` : 'livre o dia todo'}</span></div>
-      ${trilho(lista, S.form.data, { ini, fim }, bl)}
-      ${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > S.form.data ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}
-      ${choque ? '<div class="aviso conf">Esse horário já tem reserva aprovada. Escolha outro horário.</div>' : ''}
+    const aberto = matchMedia('(min-width: 900px)').matches ? 'open' : '';
+    el.innerHTML = `${choque ? '<div class="aviso conf">Esse horário já tem reserva aprovada. Escolha outro horário.</div>' : ''}
       ${disputa.length ? `<div class="aviso disputa">⚠️ ${disputa.map(p => `<b>${esc(nomeBonito(p.solicitante_nome))}</b> já pediu ${p.inicio.slice(11, 16)}–${p.fim.slice(11, 16)}`).join(', ')} e está aguardando a logística. Se puder, escolha outro horário. Se pedir mesmo assim, a logística decide quem fica.</div>` : !choque ? '<div class="aviso livre">✓ Horário livre</div>' : ''}
+      ${bl.map(b => `<div class="aviso bloq">⛔ Bloqueado ${b.inicio.slice(11, 16)}–${b.fim.slice(0, 10) > S.form.data ? '24:00' : b.fim.slice(11, 16)}${b.motivo ? ': ' + esc(b.motivo) : ''}</div>`).join('')}
       ${!e.exclusivo ? '<p class="mini">A carreta é fornecida pela CBSI: pode haver mais de um pedido no mesmo horário. A logística confirma.</p>' : ''}
-      ${lista.map(linhaReserva).join('')}`;
+      ${lista.length || bl.length ? `<details class="ocup-mais" ${aberto}><summary>Ver agenda do dia · ${lista.length ? lista.length + (lista.length > 1 ? ' reservas' : ' reserva') : 'bloqueio'}</summary>
+      ${trilho(lista, S.form.data, { ini, fim }, bl)}
+      ${lista.map(linhaReserva).join('')}</details>` : `<p class="mini">${esc(e.nome)}: livre o dia todo.</p>`}`;
   } catch (err) { el.innerHTML = `<p class="sub">${esc(err.message)}</p>`; }
 }
 function minutos(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }

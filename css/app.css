@@ -426,3 +426,8 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 .aviso-notif { background: color-mix(in srgb, var(--alerta) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--alerta) 45%, transparent); font: inherit; font-size: 14px; }
 .aviso-resp b, .aviso-notif b { color: var(--marca); }
 @keyframes pulsa { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--info) 25%, transparent); } }
+/* Pedir mais curto: setor lembrado vira uma linha; agenda do dia recolhida no celular. */
+.setor-fixo { margin: 4px 0 0; font-size: 16px; display: flex; gap: 10px; align-items: center; }
+#p-ocupacao > .aviso:first-child { margin-top: 0; }
+.ocup-mais { margin-top: 10px; }
+.ocup-mais summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--marca); padding: 6px 0; }
