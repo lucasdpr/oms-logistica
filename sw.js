@@ -1,6 +1,6 @@
 // Service worker do OMS Logística: guarda o app para abrir rápido (e sem sinal) e recebe as notificações.
 // Ao publicar mudança em qualquer arquivo do app, suba VERSAO.
-const VERSAO = 'log-v15';
+const VERSAO = 'log-v16';
 const ARQUIVOS = [
   './', './index.html', './css/app.css?v=15', './js/app.js?v=15', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
