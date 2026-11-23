@@ -256,7 +256,7 @@ async function telaPedir() {
     ${rotas.length ? `<p class="sec">⚡ Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div>` : ''}
     <div class="pedir-grid"><div class="col-form">
     <p class="sec"><span class="num">1</span>O que você precisa?</p>
-    <div class="chips" id="p-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${x.exclusivo ? ICO.painel : ICO.carreta}<span>${esc(x.nome)}<small>${x.exclusivo ? 'um uso por vez' : `até ${x.max_qtd} por pedido`}</small></span></button>`).join('')}</div>
+    <div class="chips lista-eq" id="p-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${/carreta/i.test(x.nome) ? ICO.carreta : ICO.painel}<span>${esc(x.nome)}${x.max_qtd > 1 ? `<small>até ${x.max_qtd} por pedido</small>` : ''}</span></button>`).join('')}</div>
     ${e && e.max_qtd > 1 ? `<div class="chips" style="margin-top:10px">${Array.from({ length: e.max_qtd }, (_, k) => k + 1).map(q => `<button class="chip ${q === F.quantidade ? 'on' : ''}" data-q="${q}">${q} ${q > 1 ? 'unidades' : 'unidade'}</button>`).join('')}</div>` : ''}
     <p class="sec"><span class="num">2</span>Quando?</p>
     <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>

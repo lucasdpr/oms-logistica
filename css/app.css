@@ -170,6 +170,9 @@ input, select, textarea { border-radius: 14px; transition: border-color .15s, bo
 .chip-eq svg { width: 28px; height: 28px; flex: 0 0 auto; }
 .chip-eq small { display: block; font-size: 12px; font-weight: 500; }
 .chip-eq span { text-align: left; line-height: 1.2; }
+/* Equipamentos sempre visíveis, um embaixo do outro: em fila lateral o último sumia fora da tela. */
+.chips.lista-eq { display: grid; grid-template-columns: 1fr; overflow: visible; }
+.lista-eq .chip-eq { width: 100%; justify-content: flex-start; }
 .dia-chip { min-width: 62px; min-height: 62px; border-radius: 16px; }
 .dia-chip b { font-size: 20px; font-weight: 800; }
 .nav { background: color-mix(in srgb, var(--bg-2) 92%, transparent); backdrop-filter: blur(14px); }
