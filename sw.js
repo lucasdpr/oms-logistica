@@ -2,7 +2,7 @@
 // Ao publicar mudança em qualquer arquivo do app, suba VERSAO.
 const VERSAO = 'log-v16';
 const ARQUIVOS = [
-  './', './index.html', './css/app.css?v=15', './js/app.js?v=15', './manifest.webmanifest',
+  './', './index.html', './css/app.css?v=16', './js/app.js?v=16', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
 ];
 
