@@ -502,12 +502,12 @@ function cartaoPedido(p, admin) {
   const ativo = ['pendente', 'aprovado'].includes(p.status) && p.fim >= `${hoje()} 00:00`;
   return `<div class="card ped st-${p.status} ${p.urgente && p.status === 'pendente' ? 'urg' : ''}">
     <div class="ped-top"><h3>${p.urgente ? '🚨 ' : ''}${esc(p.equipamento)}${p.quantidade > 1 ? ` <span class="sub">× ${p.quantidade}</span>` : ''}</h3><span class="selo ${seloCls}">${rot}</span></div>
-    ${admin ? `<p class="ped-quem">${esc(nomeBonito(p.solicitante_nome) || p.solicitante)}${p.setor ? ` <span>· ${esc(p.setor)}</span>` : ''}</p>` : ''}
+    ${admin ? `<p class="ped-quem">${esc(nomeBonito(p.solicitante_nome) || p.solicitante)}${p.setor ? ` <span>· ${esc(p.setor)}</span>` : ''} <span>· ${esc(p.solicitante)}</span></p>` : ''}
     <p class="ped-quando">${quando(p)}</p>
     <p class="ped-rota"><b>${esc(p.origem)}</b> → <b>${esc(p.destino)}</b> · ${esc(p.carga)}</p>
     ${p.equip_oms_id || p.serie_id ? `<p class="ped-tags">${p.equip_oms_id ? `<span class="tag">🔧 ${esc(p.equip_oms_id)}</span>` : ''}${p.serie_id ? '<span class="tag">↻ semanal</span>' : ''}</p>` : ''}
     ${p.status === 'aprovado' ? linhaTransporte(p) : ''}
-    ${admin && p.solicitante_telefone ? `<p class="ped-rota">📞 <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a> · matrícula ${esc(p.solicitante)}</p>` : admin ? `<p class="ped-rota">matrícula ${esc(p.solicitante)}</p>` : ''}
+    ${admin && p.solicitante_telefone ? `<p class="ped-rota">📞 <a href="tel:${esc(p.solicitante_telefone)}" style="color:var(--marca)">${esc(p.solicitante_telefone)}</a> </p>` : ''}
     ${p.observacao ? `<p class="mini">“${esc(p.observacao)}”</p>` : ''}
     ${p.reagendado && p.status === 'aprovado' ? `<div class="aviso sug">A logística remarcou: você pediu ${dataBR(p.sugestao_inicio)}.${p.motivo ? ' ' + esc(p.motivo) : ''}</div>` : ''}
     ${p.status === 'sugerido' && !admin ? `<div class="aviso sug sug-forte"><b>A logística sugeriu outro horário:</b><br>${quando({ inicio: p.sugestao_inicio, fim: p.sugestao_fim })}${p.motivo ? `<br><span class="sub">${esc(p.motivo)}</span>` : ''}
@@ -633,14 +633,17 @@ async function telaPainel() {
 
 // ------------------------------------------------------------------ ajustes (cadastros, equipamentos, ADMs)
 async function telaConfig() {
-  moldura('Ajustes', 'Cadastros, equipamentos e quem gerencia', '<div id="cf"><div class="card"><p class="sub">Carregando…</p></div></div>');
+  moldura('Ajustes', 'Equipamentos, pessoas e quem gerencia', '<div id="cf"><div class="card"><p class="sub">Carregando…</p></div></div>');
   try {
     const [cads, eqs, adms, bls, pes] = await Promise.all([api('/api/logistica/cadastros'), api('/api/logistica/equipamentos?todos=true'), api('/api/logistica/admins'), api(`/api/logistica/bloqueios?inicio=${hoje()}&dias=60`), api('/api/logistica/pessoas')]);
+    const aba = S.dados.cfAba || 'equip';
+    const abas = [['equip', 'Equipamentos'], ['pessoas', 'Pessoas'], ['bloq', 'Bloqueios'], ['gestores', 'Gestores'], ['mais', 'Mais']];
     $('#cf').innerHTML = `
-      <p class="sec">Pedidos de cadastro</p>
-      <div class="card">${cads.length ? cads.map(c => `<div class="lista-linha"><div><b>${esc(c.nome)}</b><small>${esc(c.matricula)} · ${esc(c.setor || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}</small></div>
-        <button class="btn ok" data-cok="${c.id}">Liberar</button><button class="btn perigo" data-cno="${c.id}" aria-label="Recusar">✕</button></div>`).join('') : '<p class="sub">Nenhum pedido de cadastro.</p>'}</div>
-      <p class="sec">Pessoas de fora (só este app)</p>
+      ${cads.length ? `<p class="sec">Pedidos de cadastro (${cads.length})</p>
+      <div class="card destaque">${cads.map(c => `<div class="lista-linha"><div><b>${esc(c.nome)}</b><small>${esc(c.matricula)} · ${esc(c.setor || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}</small></div>
+        <button class="btn ok" data-cok="${c.id}">Liberar</button><button class="btn perigo" data-cno="${c.id}" aria-label="Recusar">✕</button></div>`).join('')}</div>` : ''}
+      <div class="chips cf-abas">${abas.map(([v, t]) => `<button class="chip ${v === aba ? 'on' : ''}" data-cfaba="${v}">${t}</button>`).join('')}</div>
+      <section class="cf-sec" data-sec="pessoas" ${aba === 'pessoas' ? '' : 'hidden'}>
       <div class="card">
         <p class="mini" style="margin-top:0">Quem não tem conta no OMS. Elas só entram neste app, nunca no OMS.</p>
         <input id="pes-busca" placeholder="Buscar por nome ou matrícula" style="margin-top:8px">
@@ -648,21 +651,24 @@ async function telaConfig() {
           <small>${esc(p.matricula)}${p.setor ? ' · ' + esc(p.setor) : ''}${p.telefone ? ' · ' + esc(p.telefone) : ''}</small>
           <small>${!p.ativo ? '⛔ Desativado' : p.primeiro_acesso ? 'Ainda não entrou (senha = matrícula)' : p.ultimo_acesso ? 'Último acesso ' + dataBR(p.ultimo_acesso) : 'Já criou a senha'} · ${p.pedidos} pedido(s)</small></div>
           <button class="btn" data-pesmenu="${esc(p.matricula)}" aria-label="Opções">⋯</button></div>`).join('') : '<p class="sub" style="margin-top:10px">Ninguém de fora cadastrado ainda.</p>'}</div>
-        <button class="btn pri largo" id="pes-novo">+ Cadastrar pessoa</button></div>
-      <p class="sec">Equipamentos</p>
+        <button class="btn pri largo" id="pes-novo">+ Cadastrar pessoa</button></div></section>
+      <section class="cf-sec" data-sec="equip" ${aba === 'equip' ? '' : 'hidden'}>
       <div class="card">${eqs.map(e => `<div class="lista-linha"><div><b>${esc(e.nome)}</b><small>${e.exclusivo ? 'Um uso por vez' : `Pedido em quantidade (até ${e.max_qtd})`}${e.identificacao ? ' · ' + esc(e.identificacao) : ''}${e.ativo ? '' : ' · desativado'}</small></div>
         <button class="btn" data-eqed="${e.id}">Editar</button></div>`).join('')}
-        <button class="btn largo" id="eq-novo">+ Novo equipamento</button></div>
-      <p class="sec">Horários bloqueados</p>
+        <button class="btn largo" id="eq-novo">+ Novo equipamento</button></div></section>
+      <section class="cf-sec" data-sec="bloq" ${aba === 'bloq' ? '' : 'hidden'}>
       <div class="card">${bls.length ? bls.map(b => `<div class="lista-linha"><div><b>${esc(b.equipamento)}</b><small>${dataBR(b.inicio)} até ${dataBR(b.fim)}${b.motivo ? ' · ' + esc(b.motivo) : ''}</small></div><button class="btn perigo" data-blrm="${b.id}">Liberar</button></div>`).join('') : '<p class="sub">Nenhum bloqueio nos próximos 60 dias.</p>'}
-        <button class="btn largo" id="bl-novo">+ Bloquear horário (manutenção, feriado…)</button></div>
-      <p class="sec">Tela de TV</p>
-      <div class="card"><p class="sub">Agenda de hoje e amanhã em letra grande, para deixar aberta numa TV ou monitor do escritório. Atualiza sozinha.</p><button class="btn largo" id="bt-tv">Abrir tela de TV</button></div>
-      <p class="sec">Quem gerencia (técnicos da logística)</p>
+        <button class="btn largo" id="bl-novo">+ Bloquear horário (manutenção, feriado…)</button></div></section>
+      <section class="cf-sec" data-sec="mais" ${aba === 'mais' ? '' : 'hidden'}>
+      <div class="card"><p class="sub">Agenda de hoje e amanhã em letra grande, para deixar aberta num monitor ou telão do escritório. Atualiza sozinha.</p><button class="btn largo" id="bt-tv">Abrir quadro de transportes</button></div>
+      ${htmlInstalar(true)}</section>
+      <section class="cf-sec" data-sec="gestores" ${aba === 'gestores' ? '' : 'hidden'}>
       <div class="card">${adms.map(a => `<div class="lista-linha"><div><b>${esc(a.nome || a.matricula)}</b><small>${esc(a.matricula)}</small></div>${a.matricula !== S.sessao.matricula ? `<button class="btn perigo" data-admrm="${esc(a.matricula)}">Tirar</button>` : '<small>você</small>'}</div>`).join('')}
         <div class="dupla" style="margin-top:12px;grid-template-columns:1fr auto"><input id="adm-mat" placeholder="Matrícula" autocapitalize="characters"><button class="btn pri" id="adm-add">Adicionar</button></div>
-        <p class="mini">Quem gerencia recebe os pedidos, aprova, remarca e libera cadastros. A pessoa precisa ter conta (OMS ou cadastro aprovado).</p></div>
-      ${htmlInstalar(true)}`;
+        <p class="mini">Quem gerencia recebe os pedidos, aprova, remarca e libera cadastros. A pessoa precisa ter conta (OMS ou cadastro aprovado).</p></div></section>`;
+    document.querySelectorAll('[data-cfaba]').forEach(b => b.onclick = () => { S.dados.cfAba = b.dataset.cfaba;
+      document.querySelectorAll('[data-cfaba]').forEach(x => x.classList.toggle('on', x === b));
+      document.querySelectorAll('.cf-sec').forEach(sec => { sec.hidden = sec.dataset.sec !== b.dataset.cfaba; }); });
     const decidir = async (id, aprovar) => { try { await api(`/api/logistica/cadastros/${id}/decidir`, { method: 'POST', body: { aprovar } }); toast(aprovar ? 'Acesso liberado.' : 'Pedido recusado.'); S.eu = await api('/api/logistica/eu'); telaConfig(); } catch (e) { toast(e.message); } };
     document.querySelectorAll('[data-cok]').forEach(b => b.onclick = () => decidir(b.dataset.cok, true));
     document.querySelectorAll('[data-cno]').forEach(b => b.onclick = async () => { if (await confirmar('Recusar cadastro?', 'A pessoa não vai conseguir entrar.', 'Recusar')) decidir(b.dataset.cno, false); });
@@ -875,12 +881,12 @@ async function telaInicio() {
             <div class="kpi"><b>${m.recusados_pct == null ? '—' : m.recusados_pct + '%'}</b><span>recusados</span></div><div class="kpi"><b>${m.emergencias}</b><span>emergências</span></div></div>
           <p class="sec">Por setor</p>${barras(m.por_setor, m.total)}</div>
       </div>
-      <div class="btns"><a class="btn pri" href="#pedir">+ Novo pedido</a><a class="btn" href="#tv">Tela de TV</a></div>`;
+      <div class="btns"><a class="btn pri" href="#pedir">+ Novo pedido</a><a class="btn" href="#tv">Quadro de transportes</a></div>`;
     const num = document.querySelector('[data-num]'); if (num) num.onclick = () => { S.dados.hist = { de: isoDia(new Date(new Date().getFullYear(), new Date().getMonth(), 1)), ate: periodo(-365), equipamento_id: '', setor: '', status: '', q: '', aba: 'numeros' }; };
   } catch (e) { $('#vg').innerHTML = `<div class="card"><p class="sub">${esc(e.message)}</p></div>`; }
 }
 
-// ------------------------------------------------------------------ tela de TV
+// ------------------------------------------------------------------ quadro de transportes (telão; rota #tv mantida)
 async function telaTV() {
   clearInterval(S.tvTimer);
   const desenharTV = async () => {
@@ -895,7 +901,7 @@ async function telaTV() {
           ${ps.length ? ps.map(p => { const agoraNela = dia === hoje() && p.inicio.slice(11, 16) <= hh && p.fim.slice(11, 16) > hh;
             return `<div class="tv-it ${p.status} ${agoraNela ? 'agora' : ''}"><span class="tv-h">${p.inicio.slice(11, 16)}–${p.fim.slice(11, 16)}</span><span class="tv-d"><b>${esc(p.origem)} → ${esc(p.destino)}${p.quantidade > 1 ? ' · ' + p.quantidade + ' un.' : ''}</b><small>${esc(nomeBonito(p.solicitante_nome))}${p.setor ? ' · ' + esc(p.setor) : ''}${p.status === 'pendente' ? ' · aguardando' : ''}${p.urgente ? ' · 🚨' : ''}</small></span></div>`; }).join('') : '<div class="tv-livre">Livre</div>'}</div>`;
       }).join('')}</div>`;
-      $('#app').innerHTML = `<div class="tv"><header><img src="icons/icon-192.png" alt=""><b>OMS Logística</b><span class="tv-hora">${hh}</span><button class="btn" onclick="location.hash='config'">Sair da TV</button></header>
+      $('#app').innerHTML = `<div class="tv"><header><img src="icons/icon-192.png" alt=""><b>OMS Logística</b><span class="tv-hora">${hh}</span><button class="btn" onclick="location.hash='config'">Sair do quadro</button></header>
         <div class="tv-grid">${col(hoje(), 'Hoje')}${col(amanha(), 'Amanhã')}</div></div>`;
     } catch { /* sem sinal: tenta de novo no próximo minuto */ }
   };
