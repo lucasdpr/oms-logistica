@@ -432,6 +432,6 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 .ocup-mais { margin-top: 10px; }
 .ocup-mais summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--marca); padding: 6px 0; }
 /* Ajustes em abas: uma coisa por vez em vez de 7 seções numa rolagem só. */
-.cf-abas { margin: 4px 0 12px; }
+.cf-abas { margin: 4px 0 12px; flex-wrap: wrap; overflow: visible; }
 .cf-sec[hidden] { display: none; }
 .card.destaque { border: 1px solid color-mix(in srgb, var(--alerta) 50%, transparent); }
