@@ -455,3 +455,15 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 .linha-conf em { grid-row: 2; grid-column: 2; font-style: normal; color: var(--marca); font-weight: 600; font-size: 14px; }
 .linha-conf .chips { grid-column: 1 / -1; }
 .chip-urg { margin-top: 14px; }
+/* Treino guiado: faixa, balão apontando o que tocar e destaque do alvo. */
+.faixa-treino { background: #FFE9A8; color: #4A3500; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.faixa-treino .link { margin-left: auto; color: #4A3500; text-decoration: underline; }
+.convite-treino p { margin: 6px 0 10px; }
+.balao { position: relative; background: #1F6FD1; color: #fff; font-weight: 700; font-size: 15px; padding: 10px 14px; border-radius: 12px; margin: 10px 0 12px; box-shadow: 0 6px 18px rgba(31,111,209,.35); animation: balanca 1.4s ease-in-out infinite; flex-basis: 100%; }
+.balao::after { content: ''; position: absolute; left: 26px; bottom: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #1F6FD1; }
+@keyframes balanca { 50% { transform: translateY(3px); } }
+.coach-alvo { outline: 3px solid #1F6FD1; outline-offset: 4px; border-radius: 14px; }
+.barra-passo { flex-wrap: wrap; }
+.barra-passo .balao { margin: 0 0 4px; }
+.lista-fim { margin: 10px 0 16px; padding-left: 20px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { .balao { animation: none; } }
