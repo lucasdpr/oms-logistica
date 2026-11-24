@@ -101,6 +101,7 @@ async function desenhar() {
   S.tela = tela;
   const R = { login: telaLogin, cadastro: telaCadastro, pedir: telaPedir, agenda: telaAgenda, meus: telaMeus, painel: telaPainel, cadastros: telaCadastros, config: telaConfig, historico: telaHistorico, tv: telaTV, inicio: telaInicio }[tela];
   await R();
+  if (S.eu?.admin && tela !== 'tv' && !tourFeito() && !document.querySelector('.tour')) iniciarTour();
 }
 
 function moldura(titulo, sub, corpo) {
@@ -111,7 +112,7 @@ function moldura(titulo, sub, corpo) {
   <header class="topo"><img src="icons/icon-192.png" alt=""><div class="topo-tit"><b>${esc(titulo)}</b><span>${esc(sub)}</span></div>
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${S.eu?.para_responder && S.tela !== 'meus' ? `<a class="aviso-resp" href="#meus">🔔 A logística sugeriu outro horário para ${S.eu.para_responder > 1 ? S.eu.para_responder + ' pedidos seus' : 'um pedido seu'}. <b>Toque para responder</b></a>` : ''}
-    ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' && ['meus', 'painel', 'inicio'].includes(S.tela) ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo quando a logística responder. <b>Ligar</b></button>` : ''}${corpo}</main>
+    ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' && ['meus', 'painel', 'inicio'].includes(S.tela) ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo ${S.eu?.admin ? 'quando chegar pedido novo' : 'quando a logística responder'}. <b>Ligar</b></button>` : ''}${corpo}</main>
   <nav class="nav"><div class="nav-in">
     ${a ? item('inicio', 'Início', 'inicio') + item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('config', 'Ajustes', 'config', c || '')
         : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus', S.eu?.para_responder || '') + item('historico', 'Histórico', 'historico')}
@@ -381,6 +382,43 @@ async function telaPedir() {
     }
   };
   if (passo === 2) desenharOcupacao();
+}
+
+// ------------------------------------------------------------------ tour do gestor (primeiro acesso)
+const TOUR = 'oms_logistica_tour_gestor_v1';
+const tourFeito = () => !!lerJSON(TOUR);
+const PASSOS_TOUR = [
+  { t: 'Você é gestor 👋', x: 'Veja em 1 minuto o que você pode <b>ver</b>, <b>decidir</b> e <b>controlar</b> no app.' },
+  { a: '#inicio', t: 'Início', x: 'O resumo do dia: quantos pedidos estão <b>para decidir</b>, os <b>transportes de hoje</b>, o que está <b>atrasado</b> e os números do mês.' },
+  { a: '#painel', t: 'Decidir', x: 'Aqui chegam os pedidos. Em cada um você pode <b>Aprovar</b>, <b>Mudar horário</b> (a pessoa confirma se pode) ou <b>Recusar</b> dizendo o motivo. Se dois pedirem o mesmo horário, aparece <b>"Choca com"</b>.' },
+  { a: '#painel', t: 'No dia do transporte', x: 'Em <b>Decidir → Já aprovados</b>, toque em <b>Marcar saída</b> quando o veículo sair e em <b>Marcar entrega</b> quando chegar. Quem pediu é avisado em cada passo.' },
+  { a: '#agenda', t: 'Horários', x: 'A agenda da semana de <b>todos os veículos</b>: o que está aprovado e o que espera decisão. Dá para aprovar direto daqui.' },
+  { a: '#historico', t: 'Histórico', x: 'Todos os pedidos, com filtros por veículo, setor e situação. Tem os <b>números do mês</b> e o botão para <b>baixar a planilha</b> (Excel).' },
+  { a: '#config', t: 'Ajustes', x: 'Você controla: <b>veículos</b>, <b>pessoas</b> (cadastrar, liberar, zerar senha), <b>bloquear horários</b> para manutenção ou feriado, <b>outros gestores</b> e o <b>Quadro de transportes</b> para o monitor do escritório.' },
+  { t: 'Último passo: ligue os avisos 🔔', x: 'Assim você fica sabendo <b>na hora</b> quando chegar um pedido ou quando alguém responder uma mudança de horário.', avisos: true },
+];
+function iniciarTour(k = 0) {
+  document.querySelectorAll('.tour').forEach(x => x.remove());
+  document.querySelectorAll('.nav a.coach-alvo').forEach(x => x.classList.remove('coach-alvo'));
+  const p = PASSOS_TOUR[k], ult = k === PASSOS_TOUR.length - 1;
+  const alvo = p.a ? document.querySelector(`.nav a[href="${p.a}"]`) : null;
+  if (alvo) alvo.classList.add('coach-alvo');
+  const perm = typeof Notification === 'undefined' ? 'sem' : Notification.permission;
+  const avisos = !p.avisos ? '' : perm === 'granted' ? '<div class="aviso livre">✓ Avisos ligados.</div>'
+    : ehIOS && !instalado() ? '<div class="aviso disputa">No iPhone, instale o app primeiro: <b>Compartilhar → "Adicionar à Tela de Início"</b>. Depois abra pelo ícone e ligue os avisos.</div>'
+    : perm === 'denied' ? '<div class="aviso conf">Os avisos estão bloqueados. Libere nas configurações do navegador, em Notificações.</div>'
+    : perm === 'sem' ? '' : '<button class="btn ok largo" data-tavisos>🔔 Ligar os avisos</button>';
+  const el = document.createElement('div'); el.className = 'tour';
+  el.innerHTML = `<div class="tour-fundo"></div><div class="tour-card ${alvo ? 'com-alvo' : ''}" role="dialog" aria-modal="true">
+    <p class="tour-n">${k + 1} de ${PASSOS_TOUR.length}</p><h2>${p.t}</h2><p>${p.x}</p>${avisos}
+    ${alvo ? '<p class="tour-seta">👇 Fica aqui embaixo</p>' : ''}
+    <div class="btns">${k === 0 ? '<button class="btn" data-tpular>Pular</button>' : '<button class="btn" data-tvoltar>Voltar</button>'}<button class="btn pri" data-tprox>${k === 0 ? 'Começar' : ult ? 'Concluir' : 'Próximo'}</button></div></div>`;
+  document.body.appendChild(el);
+  const fechar = () => { el.remove(); document.querySelectorAll('.nav a.coach-alvo').forEach(x => x.classList.remove('coach-alvo')); };
+  const ta = el.querySelector('[data-tavisos]'); if (ta) ta.onclick = async () => { ta.disabled = true; ta.textContent = 'Aguardando você permitir…'; await ativarPush(); iniciarTour(k); };
+  el.querySelector('[data-tprox]').onclick = () => { if (ult) { gravarJSON(TOUR, { em: new Date().toISOString() }); fechar(); toast('Pronto! Você pode rever o tour em Ajustes → Mais.'); } else iniciarTour(k + 1); };
+  const v = el.querySelector('[data-tvoltar]'); if (v) v.onclick = () => iniciarTour(k - 1);
+  const pu = el.querySelector('[data-tpular]'); if (pu) pu.onclick = () => { gravarJSON(TOUR, { em: new Date().toISOString(), pulou: true }); fechar(); };
 }
 
 // ------------------------------------------------------------------ treino guiado (primeiro acesso)
@@ -695,7 +733,6 @@ async function telaMeus() {
 async function telaPainel() {
   const aba = S.dados.abaPainel || 'pendente';
   moldura('Pedidos', 'Aprove, remarque ou recuse', `
-    ${htmlAjuda('decidir', 'Como decidir os pedidos', ['Em <b>Para decidir</b>: toque em <b>Aprovar</b>, <b>Mudar horário</b> (a pessoa confirma) ou <b>Recusar</b>.', 'No dia, em <b>Já aprovados</b>: toque em <b>Marcar saída</b> quando o veículo sair.', 'Quando chegar, toque em <b>Marcar entrega</b>. Quem pediu é avisado em cada passo.'])}
     <div id="pn-resumo"></div>
     <div class="chips chips-wrap"><button class="chip ${aba === 'pendente' ? 'on' : ''}" data-aba="pendente">Para decidir${S.eu.pedidos_pendentes ? ` <small>(${S.eu.pedidos_pendentes})</small>` : ''}</button>
     <button class="chip ${aba === 'sugerido' ? 'on' : ''}" data-aba="sugerido">Esperando resposta</button>
@@ -752,6 +789,7 @@ async function telaConfig() {
         <button class="btn largo" id="bl-novo">+ Bloquear horário (manutenção, feriado…)</button></div></section>
       <section class="cf-sec" data-sec="mais" ${aba === 'mais' ? '' : 'hidden'}>
       <div class="card"><p class="sub">Agenda de hoje e amanhã em letra grande, para deixar aberta num monitor ou telão do escritório. Atualiza sozinha.</p><button class="btn largo" id="bt-tv">Abrir quadro de transportes</button></div>
+      <div class="card"><p class="sub">Reveja o que cada parte do app faz para o gestor.</p><button class="btn largo" id="bt-tour">Ver o tour de novo</button></div>
       ${htmlInstalar(true)}</section>
       <section class="cf-sec" data-sec="gestores" ${aba === 'gestores' ? '' : 'hidden'}>
       <div class="card">${adms.map(a => `<div class="lista-linha"><div><b>${esc(a.nome || a.matricula)}</b><small>${esc(a.matricula)}</small></div>${a.matricula !== S.sessao.matricula ? `<button class="btn perigo" data-admrm="${esc(a.matricula)}">Tirar</button>` : '<small>você</small>'}</div>`).join('')}
@@ -770,6 +808,7 @@ async function telaConfig() {
     $('#pes-busca').addEventListener('input', ev => { const q = ev.target.value.trim().toLowerCase(); document.querySelectorAll('.pes').forEach(l => { l.hidden = q && !l.dataset.busca.includes(q); }); });
     document.querySelectorAll('[data-pesmenu]').forEach(b => b.onclick = () => menuPessoa(pes.find(p => p.matricula === b.dataset.pesmenu)));
     $('#bt-tv').onclick = () => { location.hash = 'tv'; };
+    $('#bt-tour').onclick = () => iniciarTour();
     $('#eq-novo').onclick = () => editarEquip({ nome: '', exclusivo: true, max_qtd: 1, ativo: true, ordem: eqs.length });
     document.querySelectorAll('[data-admrm]').forEach(b => b.onclick = async () => { if (!await confirmar('Tirar da gestão?', `${b.dataset.admrm} deixa de receber e decidir os pedidos.`, 'Tirar')) return; try { await api('/api/logistica/admins', { method: 'POST', body: { matricula: b.dataset.admrm, remover: true } }); telaConfig(); } catch (e) { toast(e.message); } });
     $('#adm-add').onclick = async () => { try { await api('/api/logistica/admins', { method: 'POST', body: { matricula: $('#adm-mat').value } }); toast('Adicionado.'); telaConfig(); } catch (e) { toast(e.message); } };
