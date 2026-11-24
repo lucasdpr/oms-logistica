@@ -264,25 +264,25 @@ async function telaPedir() {
   if (passo === 2) { try { if (e) ag = await api(`/api/logistica/agenda?inicio=${F.data}&dias=1&equipamento_id=${e.id}`); } catch { /* sem sinal */ } }
   const ocupado = (ini, fim, st) => ag.some(p => p.status === st && p.inicio.slice(0, 10) === F.data && p.inicio.slice(11, 16) < fim && p.fim.slice(11, 16) > ini);
   const choque = !F.custom && e?.exclusivo && ocupado(F.inicio, F.fim, 'aprovado');
-  const chipLugar = (campo, valor) => `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor && !F[campo + 'Outro'] ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
+  const chipLugar = (campo, valor) => `<div class="chips chips-wrap" id="p-${campo}-box">${lugares(valor).map(l => `<button class="chip ${l === valor && !F[campo + 'Outro'] ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
     <button class="chip ${F[campo + 'Outro'] ? 'on' : ''}" data-${campo}-outro>Outro lugar…</button></div>
     ${F[campo + 'Outro'] ? `<input id="p-${campo}" value="${esc(valor || '')}" placeholder="Escreva o local" style="margin-top:8px">` : ''}`;
   const quandoTxt = `${F.data === hoje() ? 'Hoje' : F.data === amanha() ? 'Amanhã' : SEMANA[new Date(F.data + 'T12:00').getDay()] + ' ' + dataBR(F.data)}, ${F.inicio} às ${F.fim}`;
   let corpo = '';
   if (passo === 1) corpo = `
-    ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
-    ${rotas.length ? `<p class="rot">Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div><p class="rot">Ou escolha:</p>` : ''}
-    <div class="chips lista-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${/carreta/i.test(x.nome) ? ICO.carreta : ICO.painel}<span>${esc(x.nome)}${x.max_qtd > 1 ? `<small>até ${x.max_qtd} por pedido</small>` : ''}</span></button>`).join('')}</div>
+    ${fila.length && !F.treino ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
+    ${rotas.length && !F.treino ? `<p class="rot">Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div><p class="rot">Ou escolha:</p>` : ''}
+    <div class="chips lista-eq" id="p-eqs">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${/carreta/i.test(x.nome) ? ICO.carreta : ICO.painel}<span>${esc(x.nome)}${x.max_qtd > 1 ? `<small>até ${x.max_qtd} por pedido</small>` : ''}</span></button>`).join('')}</div>
     ${e && e.max_qtd > 1 ? `<p class="rot">Quantas?</p><div class="chips">${Array.from({ length: e.max_qtd }, (_, k) => k + 1).map(q => `<button class="chip ${q === F.quantidade ? 'on' : ''}" data-q="${q}">${q}</button>`).join('')}</div>` : ''}`;
   if (passo === 2) corpo = `
     <p class="rot">Dia</p>
-    <div class="chips">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
+    <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
     ${F.custom ? `<div class="dupla" style="margin-top:12px">
         <label class="campo" style="margin:0"><span>Começa</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
         <label class="campo" style="margin:0"><span>Termina</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label></div>
       <button class="link" data-modo-hora="botoes">← Voltar para os botões</button>`
     : `<p class="rot">Horário de início</p>
-      <div class="horas-grid">${Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`).map(h => { const fimH = somaHora(h, F.dur); const apr = e?.exclusivo && ocupado(h, fimH, 'aprovado'); const pen = e?.exclusivo && !apr && ocupado(h, fimH, 'pendente');
+      <div class="horas-grid" id="p-horas">${Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`).map(h => { const fimH = somaHora(h, F.dur); const apr = e?.exclusivo && ocupado(h, fimH, 'aprovado'); const pen = e?.exclusivo && !apr && ocupado(h, fimH, 'pendente');
         return `<button class="hora ${h === F.inicio ? 'on' : ''} ${apr ? 'ocupada' : ''} ${pen ? 'disputada' : ''}" data-hora="${h}" ${apr ? 'disabled' : ''}>${h.slice(0, 2)}h</button>`; }).join('')}</div>
       ${e?.exclusivo ? '<p class="mini">Riscado = ocupado. Ponto laranja = alguém já pediu.</p>' : ''}
       <p class="rot">Vai precisar por quanto tempo?</p>
@@ -309,10 +309,13 @@ async function telaPedir() {
     </details>
     <p class="mini">Depois de enviar, a logística aprova ou sugere outro horário. Você acompanha em <b>Meus pedidos</b>.</p>`;
   moldura('Novo pedido', `Passo ${passo} de 4`, `
-    ${passo === 1 ? htmlAjuda('pedir', 'Como funciona', ['Escolha o <b>equipamento</b>, o <b>dia</b> e o <b>horário</b>.', 'Diga <b>de onde sai</b> e <b>para onde vai</b>.', 'A logística <b>aprova</b> ou <b>sugere outro horário</b>. Você recebe um aviso.']) : ''}
+    ${F.treino ? '<div class="faixa-treino"><b>MODO TREINO</b> · nada será enviado <button class="link" id="t-sair">Sair do treino</button></div>'
+      : passo === 1 && !treinoFeito() ? `<div class="card ajuda convite-treino"><b>Primeira vez aqui?</b><p>Faça um <b>pedido de treino</b>: o app mostra onde tocar, passo a passo. Nada é enviado.</p>
+        <div class="btns"><button class="btn" id="t-pular">Pular</button><button class="btn pri" id="t-comecar">Começar treino</button></div></div>` : ''}
     <div class="progresso" aria-hidden="true">${[1, 2, 3, 4].map(k => `<i class="${k <= passo ? 'on' : ''}"></i>`).join('')}</div>
     <h2 class="passo-tit">${TIT[passo]}</h2>
     ${corpo}
+    ${passo === 1 && !F.treino && treinoFeito() ? '<button class="link" id="t-rever" style="margin-top:12px">Ver o treino de novo</button>' : ''}
     <p class="erro-msg" id="p-erro" hidden></p>
     <div class="barra-passo">${passo > 1 ? '<button class="btn" id="p-voltar">Voltar</button>' : ''}
       <button class="btn pri" id="p-seguir" ${choque ? 'disabled' : ''}>${passo < 4 ? 'Continuar' : 'Enviar pedido'}</button></div>`);
@@ -326,10 +329,10 @@ async function telaPedir() {
   };
   const erro = msg => { const er = $('#p-erro'); er.textContent = msg; er.hidden = false; er.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   const on = (sel, fn) => document.querySelectorAll(sel).forEach(b => b.onclick = () => { salvar(); fn(b); telaPedir(); });
-  on('[data-eq]', b => { F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; F.veioDeAtalho = false; });
+  on('[data-eq]', b => { F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; F.veioDeAtalho = false; F.tEq = true; });
   on('[data-q]', b => { F.quantidade = Number(b.dataset.q); });
-  on('[data-dia]', b => { F.data = b.dataset.dia; });
-  on('[data-hora]', b => { F.inicio = b.dataset.hora; });
+  on('[data-dia]', b => { F.data = b.dataset.dia; F.tDia = true; });
+  on('[data-hora]', b => { F.inicio = b.dataset.hora; F.tHora = true; });
   on('[data-dur]', b => { F.dur = Number(b.dataset.dur); });
   on('[data-modo-hora]', b => { F.custom = b.dataset.modoHora === 'livre'; if (!F.custom) F.dur = F.dur || 2; });
   on('[data-setor]', b => { F.setor = b.dataset.setor; gravarJSON(PREF, { ...pref, setor: F.setor }); });
@@ -343,6 +346,12 @@ async function telaPedir() {
   on('#p-voltar', () => { F.passo = F.veioDeAtalho && F.passo === 4 ? 2 : F.passo - 1; });
   ['#p-ini', '#p-fim'].forEach(x => $(x) && $(x).addEventListener('change', () => { salvar(); desenharOcupacao(); }));
   ligarBuscaPeca(salvar); ligarAjuda();
+  const novoForm = extra => ({ equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:00', dur: 2, quantidade: 1, setor: F.setor, urgente: false, passo: 1, ...extra });
+  on('#t-comecar', () => { S.form = novoForm({ treino: true }); });
+  on('#t-rever', () => { S.form = novoForm({ treino: true }); });
+  on('#t-sair', () => { S.form = novoForm(); });
+  $('#t-pular') && ($('#t-pular').onclick = () => { marcarTreino(); telaPedir(); });
+  if (F.treino) guiarTreino();
   $('#p-fila') && ($('#p-fila').onclick = enviarFila);
   $('#p-seguir').onclick = async () => {
     salvar();
@@ -353,6 +362,7 @@ async function telaPedir() {
     }
     if (passo < 4) { F.passo = passo + 1; window.scrollTo(0, 0); return telaPedir(); }
     if (!F.setor) return erro('Escolha o seu setor.');
+    if (F.treino) return fimTreino();
     const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: F.origem.trim(), destino: F.destino.trim(), carga: F.carga.trim(), observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
     const bt = $('#p-seguir'); bt.disabled = true; bt.textContent = 'Enviando…';
     const novo = () => ({ equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor, urgente: false, passo: 1 });
@@ -371,6 +381,51 @@ async function telaPedir() {
     }
   };
   if (passo === 2) desenharOcupacao();
+}
+
+// ------------------------------------------------------------------ treino guiado (primeiro acesso)
+const TREINO = 'oms_logistica_treino_v1';
+const treinoFeito = () => !!lerJSON(TREINO);
+const marcarTreino = () => gravarJSON(TREINO, { em: new Date().toISOString() });
+function guiarTreino() {
+  const F = S.form, p = F.passo;
+  const alvo = p === 1 ? (!F.tEq ? ['#p-eqs', 'Toque no veículo que você precisa.'] : null)
+    : p === 2 ? (!F.tDia ? ['#p-dias', 'Escolha o dia. Arraste para o lado para ver mais dias.'] : !F.tHora && $('#p-horas') ? ['#p-horas', 'Agora toque na hora em que você precisa.'] : null)
+    : p === 3 ? (!F.origem ? ['#p-origem-box', 'Toque no lugar de onde sai.'] : !F.destino ? ['#p-destino-box', 'Agora toque no lugar para onde vai.'] : !(F.carga || '').trim() ? ['#p-carga', 'Escreva o que vai levar. Ex.: molde, segmentos.'] : null)
+    : null;
+  const fim = { 1: 'Ótimo! Agora toque em Continuar.', 2: 'Tudo certo. Toque em Continuar.', 3: 'Pronto. Toque em Continuar.', 4: 'Confira o resumo. Se estiver certo, toque em Enviar pedido (é só treino).' }[p];
+  document.querySelectorAll('.balao, .coach-alvo').forEach(x => x.classList.contains('balao') ? x.remove() : x.classList.remove('coach-alvo'));
+  const el = alvo ? $(alvo[0]) : $('#p-seguir');
+  if (!el) return;
+  const b = document.createElement('div'); b.className = 'balao'; b.textContent = '👇 ' + (alvo ? alvo[1] : fim);
+  if (alvo) el.parentNode.insertBefore(b, el); else $('.barra-passo').prepend(b);
+  el.classList.add('coach-alvo');
+  b.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  const carga = $('#p-carga');
+  if (carga && p === 3) carga.oninput = () => { F.carga = carga.value; if (!!carga.value.trim() !== !!carga.dataset.tinha) { carga.dataset.tinha = carga.value.trim() ? '1' : ''; guiarTreino(); } };
+}
+function fimTreino() {
+  marcarTreino();
+  const permissao = () => typeof Notification === 'undefined' ? 'sem' : Notification.permission;
+  const blocoAviso = () => {
+    const p = permissao();
+    if (p === 'granted') return '<div class="aviso livre">✓ Avisos ligados. Você vai saber quando a logística responder.</div>';
+    if (ehIOS && !instalado()) return `<div class="aviso disputa"><b>No iPhone, instale o app primeiro</b> para receber avisos: toque em <b>Compartilhar</b> e depois em <b>"Adicionar à Tela de Início"</b>. Abra o app pelo ícone e ligue os avisos.</div>`;
+    if (p === 'denied') return '<div class="aviso conf"><b>Os avisos estão bloqueados</b> neste celular. Abra as configurações do navegador, procure Notificações e permita para o OMS Logística.</div>';
+    if (p === 'sem') return '<div class="aviso disputa">Este navegador não mostra avisos. Acompanhe pelo app em <b>Meus pedidos</b>.</div>';
+    return '<button class="btn ok largo" data-avisos>🔔 Ligar os avisos</button>';
+  };
+  folha(`<h2>🎉 Pronto, você aprendeu!</h2>
+    <p class="sub">Isso foi um <b>treino</b>: nada foi enviado. No pedido de verdade:</p>
+    <ol class="lista-fim"><li>A logística recebe seu pedido.</li><li>Ela <b>aprova</b> ou <b>sugere outro horário</b>.</li><li>Você <b>recebe um aviso no celular</b> e responde em <b>Meus pedidos</b>.</li></ol>
+    <p class="sec">Último passo: ligue os avisos</p>
+    <p class="sub">Sem isso você não fica sabendo quando a logística aprovar ou mudar seu horário.</p>
+    <div id="fim-avisos">${blocoAviso()}</div>
+    <button class="btn pri largo" data-real style="margin-top:12px">Fazer meu pedido de verdade</button>`, (f, fechar) => {
+    const ligar = () => { const bt = f.querySelector('[data-avisos]'); if (bt) bt.onclick = async () => { bt.disabled = true; bt.textContent = 'Aguardando você permitir…'; await ativarPush(); f.querySelector('#fim-avisos').innerHTML = blocoAviso(); ligar(); }; };
+    ligar();
+    f.querySelector('[data-real]').onclick = () => { fechar(); S.form = { equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:00', dur: 2, quantidade: 1, setor: S.form.setor, urgente: false, passo: 1 }; window.scrollTo(0, 0); telaPedir(); };
+  });
 }
 function ligarBuscaPeca(salvar) {
   const F = S.form;
