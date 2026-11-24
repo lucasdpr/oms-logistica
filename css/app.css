@@ -438,3 +438,20 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 /* Ajuda de primeiro uso. */
 .ajuda { border: 1px solid color-mix(in srgb, var(--info) 45%, transparent); background: color-mix(in srgb, var(--info) 7%, var(--card)); margin-bottom: 14px; }
 .ajuda ol { margin: 8px 0 12px; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
+/* Pedido em passos: uma pergunta por tela, botão Continuar sempre à mão. */
+.progresso { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0 14px; }
+.progresso i { height: 6px; border-radius: 3px; background: var(--card-2); }
+.progresso i.on { background: var(--marca); }
+.passo-tit { font-size: 22px; font-weight: 800; margin: 0 0 12px; }
+.barra-passo { position: sticky; bottom: calc(68px + var(--seguro-baixo)); z-index: 4; display: flex; gap: 10px; margin: 18px -16px 0; padding: 12px 16px; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px); }
+.barra-passo .btn { flex: 1; min-height: 54px; font-size: 17px; }
+.barra-passo .btn.pri { flex: 2; }
+.conferir { padding: 4px 16px; }
+.linha-conf { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--linha); padding: 12px 0; cursor: pointer; }
+.linha-conf:last-child { border-bottom: 0; }
+.linha-conf span { grid-column: 1 / -1; font-size: 13px; color: var(--texto-2); }
+.linha-conf b { font-size: 17px; }
+.linha-conf small { grid-column: 1; color: var(--texto-2); }
+.linha-conf em { grid-row: 2; grid-column: 2; font-style: normal; color: var(--marca); font-weight: 600; font-size: 14px; }
+.linha-conf .chips { grid-column: 1 / -1; }
+.chip-urg { margin-top: 14px; }

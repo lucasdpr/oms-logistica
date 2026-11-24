@@ -111,7 +111,7 @@ function moldura(titulo, sub, corpo) {
   <header class="topo"><img src="icons/icon-192.png" alt=""><div class="topo-tit"><b>${esc(titulo)}</b><span>${esc(sub)}</span></div>
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${S.eu?.para_responder && S.tela !== 'meus' ? `<a class="aviso-resp" href="#meus">🔔 A logística sugeriu outro horário para ${S.eu.para_responder > 1 ? S.eu.para_responder + ' pedidos seus' : 'um pedido seu'}. <b>Toque para responder</b></a>` : ''}
-    ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo quando a logística responder. <b>Ligar</b></button>` : ''}${corpo}</main>
+    ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' && ['meus', 'painel', 'inicio'].includes(S.tela) ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo quando a logística responder. <b>Ligar</b></button>` : ''}${corpo}</main>
   <nav class="nav"><div class="nav-in">
     ${a ? item('inicio', 'Início', 'inicio') + item('painel', 'Decidir', 'painel', n || '') + item('agenda', 'Horários', 'agenda') + item('historico', 'Histórico', 'historico') + item('config', 'Ajustes', 'config', c || '')
         : item('pedir', 'Pedir', 'pedir') + item('agenda', 'Horários', 'agenda') + item('meus', 'Meus pedidos', 'meus', S.eu?.para_responder || '') + item('historico', 'Histórico', 'historico')}
@@ -253,115 +253,124 @@ async function telaPedir() {
   const pref = lerJSON(PREF) || {};
   if (!F.equipamento_id && S.equipamentos[0]) Object.assign(F, { equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:00', dur: 2, quantidade: 1,
     setor: pref.setor || (S.eu.setores.includes(S.eu.setor) ? S.eu.setor : ''), urgente: false });
+  if (!F.passo) F.passo = 1;
   if (!F.dur && !F.custom) F.dur = 2;
   if (!F.custom) F.fim = somaHora(F.inicio, F.dur);
   if (!S.dados.rotas) { try { S.dados.rotas = rotasDe(await api('/api/logistica/pedidos/meus')); } catch { S.dados.rotas = []; } }
-  const e = eqSel();
+  if (!S.equipamentos.length) return moldura('Novo pedido', '', '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
+  const e = eqSel(), passo = F.passo, rotas = S.dados.rotas || [], fila = lerJSON(FILA) || [];
+  const TIT = ['', 'O que você precisa?', 'Para quando?', 'De onde, para onde?', 'Confira e envie'];
   let ag = [];
-  try { if (e) ag = await api(`/api/logistica/agenda?inicio=${F.data}&dias=1&equipamento_id=${e.id}`); } catch { /* sem sinal */ }
+  if (passo === 2) { try { if (e) ag = await api(`/api/logistica/agenda?inicio=${F.data}&dias=1&equipamento_id=${e.id}`); } catch { /* sem sinal */ } }
   const ocupado = (ini, fim, st) => ag.some(p => p.status === st && p.inicio.slice(0, 10) === F.data && p.inicio.slice(11, 16) < fim && p.fim.slice(11, 16) > ini);
-  const horas = Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`);
-  const fila = lerJSON(FILA) || [];
-  const rotas = S.dados.rotas || [];
-  const chipLugar = (campo, valor) => valor && !F[campo + 'Outro'] && !F[campo + 'Trocar'] ? `<p class="setor-fixo"><b>${esc(valor)}</b> <button class="link" data-${campo}-trocar>trocar</button></p>` : `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
-    <button class="chip ${F[campo + 'Outro'] ? 'on' : ''}" data-${campo}-outro>Outro…</button></div>
+  const choque = !F.custom && e?.exclusivo && ocupado(F.inicio, F.fim, 'aprovado');
+  const chipLugar = (campo, valor) => `<div class="chips chips-wrap">${lugares(valor).map(l => `<button class="chip ${l === valor && !F[campo + 'Outro'] ? 'on' : ''}" data-${campo}="${esc(l)}">${esc(l)}</button>`).join('')}
+    <button class="chip ${F[campo + 'Outro'] ? 'on' : ''}" data-${campo}-outro>Outro lugar…</button></div>
     ${F[campo + 'Outro'] ? `<input id="p-${campo}" value="${esc(valor || '')}" placeholder="Escreva o local" style="margin-top:8px">` : ''}`;
-  moldura('Novo pedido', `Olá, ${primeiroNome(S.eu.nome)}`, S.equipamentos.length ? `
-    ${htmlAjuda('pedir', 'Como funciona', ['Escolha o <b>equipamento</b>, o <b>dia</b> e o <b>horário</b>.', 'Diga de onde sai, para onde vai e o que vai levar. Toque em <b>Enviar pedido</b>.', 'A logística <b>aprova</b> ou <b>sugere outro horário</b>. Você recebe um aviso e acompanha em <b>Meus pedidos</b>.'])}
+  const quandoTxt = `${F.data === hoje() ? 'Hoje' : F.data === amanha() ? 'Amanhã' : SEMANA[new Date(F.data + 'T12:00').getDay()] + ' ' + dataBR(F.data)}, ${F.inicio} às ${F.fim}`;
+  let corpo = '';
+  if (passo === 1) corpo = `
     ${fila.length ? `<div class="aviso sug">📶 ${fila.length} pedido(s) esperando sinal para enviar. <button class="link" id="p-fila">Enviar agora</button></div>` : ''}
-    ${rotas.length ? `<p class="sec">⚡ Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div>` : ''}
-    <div class="pedir-grid"><div class="col-form">
-    <p class="sec"><span class="num">1</span>O que você precisa?</p>
-    <div class="chips lista-eq" id="p-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${/carreta/i.test(x.nome) ? ICO.carreta : ICO.painel}<span>${esc(x.nome)}${x.max_qtd > 1 ? `<small>até ${x.max_qtd} por pedido</small>` : ''}</span></button>`).join('')}</div>
-    ${e && e.max_qtd > 1 ? `<div class="chips" style="margin-top:10px">${Array.from({ length: e.max_qtd }, (_, k) => k + 1).map(q => `<button class="chip ${q === F.quantidade ? 'on' : ''}" data-q="${q}">${q} ${q > 1 ? 'unidades' : 'unidade'}</button>`).join('')}</div>` : ''}
-    <p class="sec"><span class="num">2</span>Quando?</p>
-    <div class="chips" id="p-dias">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
+    ${rotas.length ? `<p class="rot">Pedir igual a um anterior</p><div class="atalhos">${rotas.map((r, k) => `<button class="atalho" data-rota="${k}"><b>${esc(r.origem)} → ${esc(r.destino)}</b><small>${esc(r.equipamento)}${r.quantidade > 1 ? ' ×' + r.quantidade : ''} · ${esc(r.carga)}</small></button>`).join('')}</div><p class="rot">Ou escolha:</p>` : ''}
+    <div class="chips lista-eq">${S.equipamentos.map(x => `<button class="chip chip-eq ${x.id === F.equipamento_id ? 'on' : ''}" data-eq="${x.id}">${/carreta/i.test(x.nome) ? ICO.carreta : ICO.painel}<span>${esc(x.nome)}${x.max_qtd > 1 ? `<small>até ${x.max_qtd} por pedido</small>` : ''}</span></button>`).join('')}</div>
+    ${e && e.max_qtd > 1 ? `<p class="rot">Quantas?</p><div class="chips">${Array.from({ length: e.max_qtd }, (_, k) => k + 1).map(q => `<button class="chip ${q === F.quantidade ? 'on' : ''}" data-q="${q}">${q}</button>`).join('')}</div>` : ''}`;
+  if (passo === 2) corpo = `
+    <p class="rot">Dia</p>
+    <div class="chips">${proximosDias(10).map(d => `<button class="chip dia-chip ${d.iso === F.data ? 'on' : ''}" data-dia="${d.iso}"><small>${d.sem}</small><b>${d.dia}</b></button>`).join('')}</div>
     ${F.custom ? `<div class="dupla" style="margin-top:12px">
-        <label class="campo" style="margin:0"><span>Início</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
-        <label class="campo" style="margin:0"><span>Fim</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label></div>
-      <button class="link" data-modo-hora="botoes">← Escolher por botões</button>`
-    : `<p class="rot">A partir de que horas?</p>
-      <div class="horas-grid">${horas.map(h => { const fimH = somaHora(h, F.dur); const apr = e?.exclusivo && ocupado(h, fimH, 'aprovado'); const pen = e?.exclusivo && !apr && ocupado(h, fimH, 'pendente');
-        return `<button class="hora ${h === F.inicio ? 'on' : ''} ${apr ? 'ocupada' : ''} ${pen ? 'disputada' : ''}" data-hora="${h}" ${apr ? 'disabled' : ''} title="${apr ? 'Ocupado' : pen ? 'Alguém já pediu' : 'Livre'}">${h.slice(0, 2)}h</button>`; }).join('')}</div>
-      <p class="rot">Por quanto tempo?</p>
-      <div class="chips chips-wrap">${[1, 2, 3, 4].map(d => `<button class="chip ${d === F.dur ? 'on' : ''}" data-dur="${d}">${d}h</button>`).join('')}<button class="chip" data-modo-hora="livre">Outro horário</button></div>
-      ${e?.exclusivo ? '<p class="mini">Apagado = já reservado. Com ponto laranja = alguém já pediu e está aguardando.</p>' : ''}`}
-    </div>
-    <div class="col-agenda">
-    <div class="card" id="p-ocupacao"><p class="sub">Conferindo o horário…</p></div>
-    </div></div>
-    <p class="sec"><span class="num">3</span>De onde, para onde?</p>
-    <p class="rot">Setor</p>
-    ${F.setor && !F.trocarSetor ? `<p class="setor-fixo"><b>${esc(F.setor)}</b> <button class="link" id="p-setor-trocar">trocar</button></p>`
-      : `<div class="chips chips-wrap">${S.eu.setores.map(x => `<button class="chip ${x === F.setor ? 'on' : ''}" data-setor="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
+        <label class="campo" style="margin:0"><span>Começa</span><input type="time" id="p-ini" value="${F.inicio}" step="900"></label>
+        <label class="campo" style="margin:0"><span>Termina</span><input type="time" id="p-fim" value="${F.fim}" step="900"></label></div>
+      <button class="link" data-modo-hora="botoes">← Voltar para os botões</button>`
+    : `<p class="rot">Horário de início</p>
+      <div class="horas-grid">${Array.from({ length: 13 }, (_, k) => `${pad(6 + k)}:00`).map(h => { const fimH = somaHora(h, F.dur); const apr = e?.exclusivo && ocupado(h, fimH, 'aprovado'); const pen = e?.exclusivo && !apr && ocupado(h, fimH, 'pendente');
+        return `<button class="hora ${h === F.inicio ? 'on' : ''} ${apr ? 'ocupada' : ''} ${pen ? 'disputada' : ''}" data-hora="${h}" ${apr ? 'disabled' : ''}>${h.slice(0, 2)}h</button>`; }).join('')}</div>
+      ${e?.exclusivo ? '<p class="mini">Riscado = ocupado. Ponto laranja = alguém já pediu.</p>' : ''}
+      <p class="rot">Vai precisar por quanto tempo?</p>
+      <div class="chips chips-wrap">${[1, 2, 3, 4].map(d => `<button class="chip ${d === F.dur ? 'on' : ''}" data-dur="${d}">${d} hora${d > 1 ? 's' : ''}</button>`).join('')}<button class="chip" data-modo-hora="livre">Outro</button></div>`}
+    <div class="card" id="p-ocupacao" style="margin-top:14px"><p class="sub">Conferindo o horário…</p></div>`;
+  if (passo === 3) corpo = `
     <p class="rot">Sai de</p>${chipLugar('origem', F.origem)}
     <p class="rot">Vai para</p>${chipLugar('destino', F.destino)}
-    <label class="campo"><span>O que vai levar?</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>
-    <button class="chip chip-urg ${F.urgente ? 'on' : ''}" id="p-urg" style="margin-top:14px">🚨 É emergência</button>
-    <details class="mais" ${F.equip_oms_id || F.observacao || F.repetir ? 'open' : ''}><summary>Mais opções (peça do OMS, repetir, observação)</summary>
+    <label class="campo"><span>O que vai levar?</span><input id="p-carga" value="${esc(F.carga || '')}" placeholder="Ex.: Molde M-02, 2 segmentos"></label>`;
+  if (passo === 4) corpo = `
+    <div class="card conferir">
+      <button class="linha-conf" data-ir="1"><span>Equipamento</span><b>${esc(e.nome)}${F.quantidade > 1 ? ' × ' + F.quantidade : ''}</b><em>alterar</em></button>
+      <button class="linha-conf" data-ir="2"><span>Quando</span><b>${quandoTxt}</b><em>alterar</em></button>
+      <button class="linha-conf" data-ir="3"><span>Trajeto</span><b>${esc(F.origem)} → ${esc(F.destino)}</b><small>${esc(F.carga)}</small><em>alterar</em></button>
+      <div class="linha-conf"><span>Setor</span><div class="chips chips-wrap">${S.eu.setores.map(x => `<button class="chip ${x === F.setor ? 'on' : ''}" data-setor="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>
+    </div>
+    <button class="chip chip-urg ${F.urgente ? 'on' : ''}" id="p-urg">🚨 É emergência</button>
+    <details class="mais" ${F.equip_oms_id || F.observacao || F.repetir ? 'open' : ''}><summary>Mais opções (observação, repetir toda semana, peça do OMS)</summary>
+      <label class="campo"><span>Observação</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
+      <label class="campo"><span>Repetir</span><select id="p-rep">${[[0, 'Só esta vez'], [1, 'Toda semana, por 2 semanas'], [3, 'Toda semana, por 4 semanas'], [7, 'Toda semana, por 8 semanas'], [11, 'Toda semana, por 12 semanas']].map(([v, t]) => `<option value="${v}" ${Number(F.repetir || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       <label class="campo"><span>Peça do OMS</span>
         <div class="busca-peca">${F.equip_oms_id ? `<div class="peca-sel"><b>🔧 ${esc(F.equip_oms_id)}</b><span>${esc(F.equip_oms_desc || '')}</span><button type="button" class="link" id="p-peca-x">Trocar</button></div>`
           : `<input id="p-peca" placeholder="Digite o código: M-02, S-14…" autocomplete="off"><div id="p-peca-res" class="peca-res"></div>`}</div></label>
-      <label class="campo"><span>Repetir</span><select id="p-rep">${[[0, 'Só esta vez'], [1, 'Toda semana, por 2 semanas'], [3, 'Toda semana, por 4 semanas'], [7, 'Toda semana, por 8 semanas'], [11, 'Toda semana, por 12 semanas']].map(([v, t]) => `<option value="${v}" ${Number(F.repetir || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
-      <label class="campo"><span>Observação</span><textarea id="p-obs" placeholder="Peso, contato no local, cuidados…">${esc(F.observacao || '')}</textarea></label>
     </details>
+    <p class="mini">Depois de enviar, a logística aprova ou sugere outro horário. Você acompanha em <b>Meus pedidos</b>.</p>`;
+  moldura('Novo pedido', `Passo ${passo} de 4`, `
+    ${passo === 1 ? htmlAjuda('pedir', 'Como funciona', ['Escolha o <b>equipamento</b>, o <b>dia</b> e o <b>horário</b>.', 'Diga <b>de onde sai</b> e <b>para onde vai</b>.', 'A logística <b>aprova</b> ou <b>sugere outro horário</b>. Você recebe um aviso.']) : ''}
+    <div class="progresso" aria-hidden="true">${[1, 2, 3, 4].map(k => `<i class="${k <= passo ? 'on' : ''}"></i>`).join('')}</div>
+    <h2 class="passo-tit">${TIT[passo]}</h2>
+    ${corpo}
     <p class="erro-msg" id="p-erro" hidden></p>
-    <p class="resumo-pedido" id="p-resumo"></p><button class="btn pri largo" id="p-enviar">Enviar pedido</button>` : '<div class="vazio"><b>Nenhum equipamento cadastrado</b>A logística ainda não cadastrou os equipamentos.</div>');
-  if (!S.equipamentos.length) return;
+    <div class="barra-passo">${passo > 1 ? '<button class="btn" id="p-voltar">Voltar</button>' : ''}
+      <button class="btn pri" id="p-seguir" ${choque ? 'disabled' : ''}>${passo < 4 ? 'Continuar' : 'Enviar pedido'}</button></div>`);
   const salvar = () => {
     if ($('#p-ini')) { F.inicio = $('#p-ini').value; F.fim = $('#p-fim').value; }
     if ($('#p-origem')) F.origem = $('#p-origem').value;
     if ($('#p-destino')) F.destino = $('#p-destino').value;
-    Object.assign(F, { carga: $('#p-carga').value, observacao: $('#p-obs').value, repetir: Number($('#p-rep').value) || 0 });
+    if ($('#p-carga')) F.carga = $('#p-carga').value;
+    if ($('#p-obs')) F.observacao = $('#p-obs').value;
+    if ($('#p-rep')) F.repetir = Number($('#p-rep').value) || 0;
   };
-  const re = () => { salvar(); telaPedir(); };
+  const erro = msg => { const er = $('#p-erro'); er.textContent = msg; er.hidden = false; er.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
   const on = (sel, fn) => document.querySelectorAll(sel).forEach(b => b.onclick = () => { salvar(); fn(b); telaPedir(); });
-  on('[data-eq]', b => { F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; });
+  on('[data-eq]', b => { F.equipamento_id = Number(b.dataset.eq); F.quantidade = 1; F.veioDeAtalho = false; });
   on('[data-q]', b => { F.quantidade = Number(b.dataset.q); });
   on('[data-dia]', b => { F.data = b.dataset.dia; });
   on('[data-hora]', b => { F.inicio = b.dataset.hora; });
   on('[data-dur]', b => { F.dur = Number(b.dataset.dur); });
   on('[data-modo-hora]', b => { F.custom = b.dataset.modoHora === 'livre'; if (!F.custom) F.dur = F.dur || 2; });
-  on('[data-setor]', b => { F.setor = b.dataset.setor; F.trocarSetor = false; gravarJSON(PREF, { ...pref, setor: F.setor }); });
-  on('#p-setor-trocar', () => { F.trocarSetor = true; });
-  on('[data-origem]', b => { F.origem = b.dataset.origem; F.origemOutro = false; F.origemTrocar = false; });
-  on('[data-destino]', b => { F.destino = b.dataset.destino; F.destinoOutro = false; F.destinoTrocar = false; });
-  on('[data-origem-trocar]', () => { F.origemTrocar = true; });
-  on('[data-destino-trocar]', () => { F.destinoTrocar = true; });
+  on('[data-setor]', b => { F.setor = b.dataset.setor; gravarJSON(PREF, { ...pref, setor: F.setor }); });
+  on('[data-origem]', b => { F.origem = b.dataset.origem; F.origemOutro = false; });
+  on('[data-destino]', b => { F.destino = b.dataset.destino; F.destinoOutro = false; });
   on('[data-origem-outro]', () => { F.origemOutro = true; if (LUGARES_PADRAO.includes(F.origem)) F.origem = ''; });
   on('[data-destino-outro]', () => { F.destinoOutro = true; if (LUGARES_PADRAO.includes(F.destino)) F.destino = ''; });
   on('#p-urg', () => { F.urgente = !F.urgente; });
-  on('[data-rota]', b => { const r = rotas[Number(b.dataset.rota)]; Object.assign(F, { equipamento_id: r.equipamento_id, origem: r.origem, destino: r.destino, carga: r.carga, quantidade: r.quantidade, setor: r.setor || F.setor, origemOutro: false, destinoOutro: false }); toast('Preenchido. Escolha o dia e o horário.'); });
-  ['#p-ini', '#p-fim'].forEach(x => $(x) && $(x).addEventListener('change', () => { salvar(); desenharOcupacao(); resumir(); }));
+  on('[data-ir]', b => { F.passo = Number(b.dataset.ir); });
+  on('[data-rota]', b => { const r = rotas[Number(b.dataset.rota)]; Object.assign(F, { equipamento_id: r.equipamento_id, origem: r.origem, destino: r.destino, carga: r.carga, quantidade: r.quantidade, setor: r.setor || F.setor, origemOutro: false, destinoOutro: false, passo: 2, veioDeAtalho: true }); });
+  on('#p-voltar', () => { F.passo = F.veioDeAtalho && F.passo === 4 ? 2 : F.passo - 1; });
+  ['#p-ini', '#p-fim'].forEach(x => $(x) && $(x).addEventListener('change', () => { salvar(); desenharOcupacao(); }));
   ligarBuscaPeca(salvar); ligarAjuda();
   $('#p-fila') && ($('#p-fila').onclick = enviarFila);
-  $('#p-enviar').onclick = async () => {
+  $('#p-seguir').onclick = async () => {
     salvar();
-    const er = $('#p-erro'); er.hidden = true;
-    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: (F.origem || '').trim(), destino: (F.destino || '').trim(), carga: (F.carga || '').trim(), observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
-    const falta = [!F.setor && 'o setor', !corpo.origem && 'de onde sai', !corpo.destino && 'para onde vai', !corpo.carga && 'o que vai levar'].filter(Boolean);
-    if (falta.length) { er.textContent = 'Falta escolher: ' + falta.join(', ') + '.'; er.hidden = false; er.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
-    const bt = $('#p-enviar'); bt.disabled = true;
+    if (passo === 2 && F.veioDeAtalho && F.origem && F.destino && F.carga) { F.passo = 4; return telaPedir(); }
+    if (passo === 3) {
+      const falta = [!(F.origem || '').trim() && 'de onde sai', !(F.destino || '').trim() && 'para onde vai', !(F.carga || '').trim() && 'o que vai levar'].filter(Boolean);
+      if (falta.length) return erro('Falta dizer ' + falta.join(', ') + '.');
+    }
+    if (passo < 4) { F.passo = passo + 1; window.scrollTo(0, 0); return telaPedir(); }
+    if (!F.setor) return erro('Escolha o seu setor.');
+    const corpo = { equipamento_id: F.equipamento_id, inicio: `${F.data} ${F.inicio}`, fim: `${F.fim <= F.inicio ? diaSeguinte(F.data) : F.data} ${F.fim}`, origem: F.origem.trim(), destino: F.destino.trim(), carga: F.carga.trim(), observacao: F.observacao, setor: F.setor, quantidade: F.quantidade, urgente: F.urgente, repetir_semanas: F.repetir || 0, equip_oms_id: F.equip_oms_id || null, equip_oms_desc: F.equip_oms_desc || null };
+    const bt = $('#p-seguir'); bt.disabled = true; bt.textContent = 'Enviando…';
+    const novo = () => ({ equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor, urgente: false, passo: 1 });
     try {
       const r = await api('/api/logistica/pedidos', { method: 'POST', body: corpo });
-      S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor, urgente: false };
-      S.dados.rotas = null;
+      S.form = novo(); S.dados.rotas = null;
       toast(r.criados > 1 ? `${r.criados} pedidos enviados (um por semana)${r.pulados?.length ? `. Ocupado em ${r.pulados.join(', ')}: esses não entraram` : ''}.`
-        : r.disputa ? 'Pedido enviado. Outra pessoa também pediu esse horário: a logística decide.' : 'Pedido enviado para a logística.');
+        : r.disputa ? 'Pedido enviado. Outra pessoa também pediu esse horário: a logística decide.' : 'Pedido enviado! A logística vai responder.');
       ir('meus');
     } catch (err) {
       if (err.rede) {
         const fl = lerJSON(FILA) || []; fl.push(corpo); gravarJSON(FILA, fl);
         toast('Sem sinal: o pedido fica guardado e é enviado quando a conexão voltar.');
-        S.form = { equipamento_id: F.equipamento_id, data: F.data, inicio: F.inicio, dur: F.dur, quantidade: 1, setor: F.setor };
-        telaPedir();
-      } else { er.textContent = err.message; er.hidden = false; bt.disabled = false; }
+        S.form = novo(); telaPedir();
+      } else { erro(err.message); bt.disabled = false; bt.textContent = 'Enviar pedido'; }
     }
   };
-  const resumir = () => { salvar(); const q = eqSel(); $('#p-resumo').textContent = `${q.nome}${F.quantidade > 1 ? ' × ' + F.quantidade : ''} · ${F.data === amanha() ? 'amanhã' : F.data === hoje() ? 'hoje' : dataBR(F.data)} ${F.inicio}–${F.fim}${F.origem && F.destino ? ' · ' + F.origem + ' → ' + F.destino : ''}${F.urgente ? ' · 🚨' : ''}`; };
-  document.querySelectorAll('#app input, #app select, #app textarea').forEach(el => el.addEventListener('input', resumir)); resumir();
-  void re;
-  desenharOcupacao();
+  if (passo === 2) desenharOcupacao();
 }
 function ligarBuscaPeca(salvar) {
   const F = S.form;
