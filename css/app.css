@@ -435,3 +435,6 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 .cf-abas { margin: 4px 0 12px; flex-wrap: wrap; overflow: visible; }
 .cf-sec[hidden] { display: none; }
 .card.destaque { border: 1px solid color-mix(in srgb, var(--alerta) 50%, transparent); }
+/* Ajuda de primeiro uso. */
+.ajuda { border: 1px solid color-mix(in srgb, var(--info) 45%, transparent); background: color-mix(in srgb, var(--info) 7%, var(--card)); margin-bottom: 14px; }
+.ajuda ol { margin: 8px 0 12px; padding-left: 20px; display: grid; gap: 6px; font-size: 15px; }
