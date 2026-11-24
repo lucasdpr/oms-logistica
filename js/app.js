@@ -406,10 +406,24 @@ function guiarTreino() {
 }
 function fimTreino() {
   marcarTreino();
+  const permissao = () => typeof Notification === 'undefined' ? 'sem' : Notification.permission;
+  const blocoAviso = () => {
+    const p = permissao();
+    if (p === 'granted') return '<div class="aviso livre">✓ Avisos ligados. Você vai saber quando a logística responder.</div>';
+    if (ehIOS && !instalado()) return `<div class="aviso disputa"><b>No iPhone, instale o app primeiro</b> para receber avisos: toque em <b>Compartilhar</b> e depois em <b>"Adicionar à Tela de Início"</b>. Abra o app pelo ícone e ligue os avisos.</div>`;
+    if (p === 'denied') return '<div class="aviso conf"><b>Os avisos estão bloqueados</b> neste celular. Abra as configurações do navegador, procure Notificações e permita para o OMS Logística.</div>';
+    if (p === 'sem') return '<div class="aviso disputa">Este navegador não mostra avisos. Acompanhe pelo app em <b>Meus pedidos</b>.</div>';
+    return '<button class="btn ok largo" data-avisos>🔔 Ligar os avisos</button>';
+  };
   folha(`<h2>🎉 Pronto, você aprendeu!</h2>
-    <p class="sub">Isso foi um <b>treino</b>: nada foi enviado. No pedido de verdade acontece assim:</p>
-    <ol class="lista-fim"><li>A logística recebe seu pedido.</li><li>Ela <b>aprova</b> ou <b>sugere outro horário</b>, e você recebe um aviso.</li><li>Você acompanha tudo em <b>Meus pedidos</b>.</li></ol>
-    <button class="btn pri largo" data-real>Fazer meu pedido de verdade</button>`, (f, fechar) => {
+    <p class="sub">Isso foi um <b>treino</b>: nada foi enviado. No pedido de verdade:</p>
+    <ol class="lista-fim"><li>A logística recebe seu pedido.</li><li>Ela <b>aprova</b> ou <b>sugere outro horário</b>.</li><li>Você <b>recebe um aviso no celular</b> e responde em <b>Meus pedidos</b>.</li></ol>
+    <p class="sec">Último passo: ligue os avisos</p>
+    <p class="sub">Sem isso você não fica sabendo quando a logística aprovar ou mudar seu horário.</p>
+    <div id="fim-avisos">${blocoAviso()}</div>
+    <button class="btn pri largo" data-real style="margin-top:12px">Fazer meu pedido de verdade</button>`, (f, fechar) => {
+    const ligar = () => { const bt = f.querySelector('[data-avisos]'); if (bt) bt.onclick = async () => { bt.disabled = true; bt.textContent = 'Aguardando você permitir…'; await ativarPush(); f.querySelector('#fim-avisos').innerHTML = blocoAviso(); ligar(); }; };
+    ligar();
     f.querySelector('[data-real]').onclick = () => { fechar(); S.form = { equipamento_id: S.equipamentos[0].id, data: amanha(), inicio: '07:00', dur: 2, quantidade: 1, setor: S.form.setor, urgente: false, passo: 1 }; window.scrollTo(0, 0); telaPedir(); };
   });
 }
