@@ -53,8 +53,19 @@ const ICO = {
   carreta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V6h13v10"/><path d="M15 9h4l3 4v3h-2"/><path d="M2 16h1m4 0h4m4 0h1"/><circle cx="5" cy="17" r="2"/><circle cx="13" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg>',
   historico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg>',
   inicio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  sol: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  lua: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
   sair: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
+
+// ------------------------------------------------------------------ tema (claro é o padrão; cada pessoa escolhe no topo)
+const TEMA = 'oms_logistica_tema';
+const temaAtual = () => document.documentElement.dataset.theme === 'dark' ? 'escuro' : 'claro';
+function aplicarTema(t) {
+  document.documentElement.dataset.theme = t === 'escuro' ? 'dark' : 'light';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'escuro' ? '#0B0C0F' : '#F2F3F5';
+  try { localStorage.setItem(TEMA, t); } catch { /* sem armazenamento */ }
+}
 
 // ------------------------------------------------------------------ sessão
 async function entrar(matricula, senha) {
@@ -110,6 +121,7 @@ function moldura(titulo, sub, corpo) {
   const item = (t, rot, ico, b) => `<a href="#${t}" class="${S.tela === t ? 'on' : ''}">${b ? `<span class="bolha">${b}</span>` : ''}${ICO[ico]}${rot}</a>`;
   $('#app').innerHTML = `
   <header class="topo"><img src="icons/icon-192.png" alt=""><div class="topo-tit"><b>${esc(titulo)}</b><span>${esc(sub)}</span></div>
+    <button class="btn-ico" id="bt-tema" aria-label="${temaAtual() === 'escuro' ? 'Mudar para tela clara' : 'Mudar para tela escura'}" title="${temaAtual() === 'escuro' ? 'Tela clara' : 'Tela escura'}">${temaAtual() === 'escuro' ? ICO.sol : ICO.lua}</button>
     <button class="btn-ico" id="bt-sair" aria-label="Sair">${ICO.sair}</button></header>
   <main class="conteudo">${S.eu?.para_responder && S.tela !== 'meus' ? `<a class="aviso-resp" href="#meus">🔔 A logística sugeriu outro horário para ${S.eu.para_responder > 1 ? S.eu.para_responder + ' pedidos seus' : 'um pedido seu'}. <b>Toque para responder</b></a>` : ''}
     ${typeof Notification !== 'undefined' && Notification.permission !== 'granted' && ['meus', 'painel', 'inicio'].includes(S.tela) ? `<button class="aviso-notif" id="bt-notif">🔕 As notificações estão desligadas: você não fica sabendo ${S.eu?.admin ? 'quando chegar pedido novo' : 'quando a logística responder'}. <b>Ligar</b></button>` : ''}${corpo}</main>
@@ -121,6 +133,7 @@ function moldura(titulo, sub, corpo) {
     if (Notification.permission === 'denied') return folha('<h2>Notificações bloqueadas</h2><p class="sub">O celular está bloqueando os avisos deste app. Abra as configurações do navegador (ou do app instalado), procure Notificações e permita para o OMS Logística. Depois volte aqui.</p><button class="btn pri largo" data-x>Entendi</button>', (f, x) => { f.querySelector('[data-x]').onclick = x; });
     await ativarPush(); desenhar();
   };
+  $('#bt-tema').onclick = () => { aplicarTema(temaAtual() === 'escuro' ? 'claro' : 'escuro'); desenhar(); };
   $('#bt-sair').onclick = async () => { if (await confirmar('Sair do app?', 'Você vai precisar da matrícula e da senha para entrar de novo.', 'Sair')) sair(); };
 }
 
