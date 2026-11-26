@@ -63,7 +63,7 @@ const TEMA = 'oms_logistica_tema';
 const temaAtual = () => document.documentElement.dataset.theme === 'dark' ? 'escuro' : 'claro';
 function aplicarTema(t) {
   document.documentElement.dataset.theme = t === 'escuro' ? 'dark' : 'light';
-  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'escuro' ? '#0B0C0F' : '#F2F3F5';
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'escuro' ? '#0B1226' : '#F2F3F5';
   try { localStorage.setItem(TEMA, t); } catch { /* sem armazenamento */ }
 }
 
