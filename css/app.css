@@ -478,3 +478,41 @@ details.mais summary { cursor: pointer; padding: 10px 0 4px; font-weight: 700; c
 .tour-seta { color: #1F6FD1; font-weight: 700; }
 .tour ~ .nav, body:has(.tour) .nav { z-index: 41; }
 .nav a.coach-alvo { outline: 3px solid #1F6FD1; outline-offset: -4px; background: color-mix(in srgb, #1F6FD1 12%, var(--bg-2)); color: #1F6FD1; }
+
+/* ================= Visual novo: aba ativa que se encaixa na tela, bolinhas e cartões mais suaves ================= */
+:root { --raio: 22px; }
+:root[data-theme="light"] { --sombra: 0 1px 2px rgba(15,18,25,.04), 0 10px 28px rgba(15,18,25,.07); }
+
+/* Celular: a aba ativa vira uma lingueta da cor da tela, com curvas que a ligam ao conteúdo. */
+@media (max-width: 899px) {
+  .nav { border-top: 0; box-shadow: 0 -1px 0 var(--linha), 0 -8px 24px rgba(15,18,25,.06); }
+  .nav a.on { background: var(--bg); border-radius: 0 0 22px 22px; color: var(--marca); }
+  .nav a.on::before, .nav a.on::after { content: ''; position: absolute; top: 0; width: 22px; height: 22px; pointer-events: none; }
+  .nav a.on::before { left: -22px; background: radial-gradient(circle at 0 100%, transparent 21.5px, var(--bg) 22px); }
+  .nav a.on::after { right: -22px; background: radial-gradient(circle at 100% 100%, transparent 21.5px, var(--bg) 22px); }
+  .nav a:first-child.on::before, .nav a:last-child.on::after { display: none; }
+  .nav a.on svg { background: var(--marca); color: #fff; box-shadow: var(--brilho); }
+}
+/* Computador: o item ativo do menu lateral se funde com o conteúdo, como na referência. */
+@media (min-width: 900px) {
+  .nav a.on { background: var(--bg); color: var(--marca); border-radius: 16px 0 0 16px; margin-right: -15px; padding-right: 31px; }
+  .nav a.on::before, .nav a.on::after { content: ''; position: absolute; right: 0; width: 20px; height: 20px; pointer-events: none; }
+  .nav a.on::before { top: -20px; background: radial-gradient(circle at 0 0, transparent 19.5px, var(--bg) 20px); }
+  .nav a.on::after { bottom: -20px; background: radial-gradient(circle at 0 100%, transparent 19.5px, var(--bg) 20px); }
+  .nav a.on svg { color: var(--marca); }
+}
+/* Bolinhas de contagem: redondas, laranja e com contorno, como o "3" da referência. */
+.nav .bolha { min-width: 20px; height: 20px; line-height: 16px; border-radius: 10px; background: var(--marca); border: 2px solid var(--bg-2); font-weight: 800; box-shadow: 0 2px 6px rgba(240,122,10,.35); }
+.nav a.on .bolha { border-color: var(--bg); }
+
+/* Modo escuro: azul-noite com efeito de vidro (só para quem escolhe escuro). */
+:root[data-theme="dark"] {
+  --bg: #0B1226; --bg-2: #101A35; --card: #16213F; --card-2: #1E2B4F; --linha: rgba(160,190,255,.13);
+  --texto: #EEF2FF; --texto-2: #9DA9C8; --info: #6CA0FF;
+  --sombra: inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.4);
+}
+:root[data-theme="dark"] body { background: radial-gradient(900px 520px at 15% -5%, #1D2F62 0%, transparent 65%), radial-gradient(700px 500px at 110% 30%, #18264F 0%, transparent 60%), var(--bg); background-attachment: fixed; }
+:root[data-theme="dark"] .card { background: color-mix(in srgb, var(--card) 72%, transparent); border-color: rgba(160,190,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+:root[data-theme="dark"] .topo { background: color-mix(in srgb, var(--bg) 70%, transparent); }
+:root[data-theme="dark"] .chip:not(.on), :root[data-theme="dark"] .hora:not(.on):not(.ocupada) { background: rgba(255,255,255,.05); border-color: rgba(160,190,255,.14); }
+@media (prefers-reduced-transparency: reduce) { :root[data-theme="dark"] .card { backdrop-filter: none; background: var(--card); } }
